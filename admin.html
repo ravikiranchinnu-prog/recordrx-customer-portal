@@ -1206,8 +1206,13 @@
             </div>
           </div>
 
-          <!-- Open Chat Panels Container -->
-          <div id="openChatPanels" class="mt-4 space-y-3"></div>
+          <!-- Ticket Chat Subpage (hidden by default, replaces table view) -->
+          <div id="ticketChatSubpage" class="hidden">
+            <!-- Tab Bar -->
+            <div id="ticketTabBar" class="flex items-center gap-1 mb-3 overflow-x-auto pb-1 scrollbar-thin"></div>
+            <!-- Active Chat Container -->
+            <div id="activeChatContainer"></div>
+          </div>
         </div>
 
         <div id="page-activity" class="page-content hidden">
@@ -2373,9 +2378,11 @@
         } catch { return null; }
       }
 
+      let invoicingConfig = {};
+
       function saveAppData() {
         const data = {
-          customers, invoices, payments, plans, offers, tickets, mgmtCustomers, users
+          customers, invoices, payments, plans, offers, tickets, mgmtCustomers, users, invoicingConfig
         };
         localStorage.setItem(DATA_KEY, JSON.stringify(data));
       }
@@ -2389,6 +2396,7 @@
       let plans = savedData?.plans || [];
       let offers = savedData?.offers || [];
       let tickets = savedData?.tickets || [];
+      invoicingConfig = savedData?.invoicingConfig || {};
 
       let currentInvoiceForPayment = null;
       let currentInvoiceInvoice = null;
@@ -2671,6 +2679,7 @@
         const payment = payments.find(p => p.id === paymentId);
         if (payment) {
           payment.reconciled = 'matched';
+          saveAppData();
           updateReconciliationStats();
           renderReconciliationTable();
         }
@@ -2698,6 +2707,7 @@
             if (invoice.paid >= invoice.amount) invoice.status = 'paid';
             else invoice.status = 'partial';
             
+            saveAppData();
             updateReconciliationStats();
             renderReconciliationTable();
             renderInvoicesTable();
@@ -2864,11 +2874,33 @@ For questions: billing@recordrx.com
         if (pageId === 'user-mgmt') {
           initUserMgmt();
         }
+        if (pageId === 'tickets') {
+          // Reload tickets from localStorage to pick up customer-submitted tickets
+          const freshData = loadAppData();
+          if (freshData?.tickets) tickets = freshData.tickets;
+          if (freshData?.mgmtCustomers) mgmtCustomers = freshData.mgmtCustomers;
+          showTicketTableView();
+          renderTicketsTable();
+          updateTicketStats();
+        }
       };
 
       // ===== DASHBOARD =====
       
       function initDashboard() {
+        // Reload data from localStorage to pick up changes from other pages (e.g. customer tickets)
+        const freshData = loadAppData();
+        if (freshData) {
+          customers = freshData.customers || [];
+          invoices = freshData.invoices || [];
+          payments = freshData.payments || [];
+          plans = freshData.plans || [];
+          offers = freshData.offers || [];
+          tickets = freshData.tickets || [];
+          mgmtCustomers = freshData.mgmtCustomers || [];
+          users = freshData.users || [];
+          invoicingConfig = freshData.invoicingConfig || {};
+        }
         updateDashboardStats();
         renderRevenueChart();
         renderInvoicingDonut();
@@ -3192,6 +3224,7 @@ For questions: billing@recordrx.com
         };
         
         invoices.unshift(newInvoice);
+        saveAppData();
         renderInvoicesTable();
         updateInvoicingSummary();
         renderCustomersTable();
@@ -3292,6 +3325,7 @@ For questions: billing@recordrx.com
         const newName = prompt('Customer Name:', customer.name);
         if (newName !== null) {
           customer.name = newName;
+          saveAppData();
           renderMgmtCustomersTable();
         }
       }
@@ -3511,13 +3545,12 @@ For questions: billing@recordrx.com
         const phone = document.getElementById('mgmtCustomerPhone').value.trim();
         const company = document.getElementById('mgmtCustomerCompany').value.trim();
         const status = document.getElementById('mgmtCustomerStatus').value;
+        const password = document.getElementById('mgmtCustomerPassword').value.trim();
         
-        if (!name || !email) {
-          showToast('Please fill in name and email', 'warning');
+        if (!name || !email || !password) {
+          showToast('Please fill in name, email and password', 'warning');
           return;
         }
-        
-        const defaultPassword = generateDefaultPassword();
         
         const newCustomer = {
           id: `MCUST${String(mgmtCustomers.length + 1).padStart(3, '0')}`,
@@ -3525,16 +3558,15 @@ For questions: billing@recordrx.com
           email,
           phone,
           company,
-          status
+          status,
+          password
         };
         
         mgmtCustomers.push(newCustomer);
         saveAppData();
         renderMgmtCustomersTable();
         closeModal('addMgmtCustomerModal');
-        
-        // Send welcome email
-        sendWelcomeEmail(email, name, defaultPassword, 'Customer');
+        showToast(`Customer ${name} created. Login: ${email} / ${password}`, 'success');
       };
 
       // ===== PLAN MANAGEMENT =====
@@ -3939,23 +3971,98 @@ For questions: billing@recordrx.com
         if (closedEl) closedEl.textContent = closed;
       }
 
-      // ===== TICKET CHAT PANELS =====
-      const openChats = new Set();
+      // ===== TICKET CHAT TABBED SUBPAGE =====
+      const openChatList = [];   // ordered list of opened ticket IDs
+      let activeTicketId = null; // currently visible ticket
+      const pendingAttachments = {}; // { ticketId: { name, type, size, data } }
+
+      // DOM refs
+      const ticketTableView = document.querySelector('#page-tickets > .flex.flex-wrap, #page-tickets > .grid, #page-tickets > .date-range-picker, #page-tickets > .bg-white');
+      const ticketChatSubpage = document.getElementById('ticketChatSubpage');
+      const ticketTabBar = document.getElementById('ticketTabBar');
+      const activeChatContainer = document.getElementById('activeChatContainer');
+
+      // Collect all "table-view" elements so we can show/hide them
+      function getTicketTableElements() {
+        const page = document.getElementById('page-tickets');
+        return Array.from(page.children).filter(el => el.id !== 'ticketChatSubpage');
+      }
+
+      function showTicketTableView() {
+        getTicketTableElements().forEach(el => el.classList.remove('hidden'));
+        ticketChatSubpage.classList.add('hidden');
+      }
+
+      function showTicketChatView() {
+        getTicketTableElements().forEach(el => el.classList.add('hidden'));
+        ticketChatSubpage.classList.remove('hidden');
+      }
 
       function openTicketChat(ticketId) {
-        if (openChats.has(ticketId)) {
-          const panel = document.getElementById('chat-panel-' + ticketId);
-          if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          return;
+        // Add to list if not already open
+        if (!openChatList.includes(ticketId)) {
+          openChatList.push(ticketId);
         }
-        openChats.add(ticketId);
-        renderChatPanel(ticketId);
+        activeTicketId = ticketId;
+        showTicketChatView();
+        renderTicketTabBar();
+        renderActiveChatPanel();
       }
 
       function closeTicketChat(ticketId) {
-        openChats.delete(ticketId);
-        const panel = document.getElementById('chat-panel-' + ticketId);
-        if (panel) panel.remove();
+        const idx = openChatList.indexOf(ticketId);
+        if (idx !== -1) openChatList.splice(idx, 1);
+
+        if (openChatList.length === 0) {
+          // No more open tickets — go back to table
+          activeTicketId = null;
+          activeChatContainer.innerHTML = '';
+          showTicketTableView();
+          return;
+        }
+
+        // If we closed the active tab, switch to the nearest one
+        if (activeTicketId === ticketId) {
+          activeTicketId = openChatList[Math.min(idx, openChatList.length - 1)];
+        }
+        renderTicketTabBar();
+        renderActiveChatPanel();
+      }
+
+      function switchTicketTab(ticketId) {
+        activeTicketId = ticketId;
+        renderTicketTabBar();
+        renderActiveChatPanel();
+      }
+
+      function renderTicketTabBar() {
+        ticketTabBar.innerHTML = `
+          <button onclick="backToTicketTable()" class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex-shrink-0" title="Back to ticket list">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            All Tickets
+          </button>
+          <div class="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1 flex-shrink-0"></div>
+        ` + openChatList.map(id => {
+          const isActive = id === activeTicketId;
+          return `
+            <div class="flex items-center gap-0.5 flex-shrink-0 rounded-lg border ${
+              isActive
+                ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/30 dark:border-teal-600'
+                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700'
+            } transition-colors">
+              <button onclick="switchTicketTab('${id}')" class="px-2.5 py-1.5 text-xs font-medium ${
+                isActive ? 'text-teal-700 dark:text-teal-300' : 'text-slate-600 dark:text-slate-300'
+              }">${id}</button>
+              <button onclick="event.stopPropagation(); closeTicketChat('${id}')" class="p-1 mr-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-slate-400 hover:text-red-500 transition-colors" title="Close ${id}">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>`;
+        }).join('');
+      }
+
+      function backToTicketTable() {
+        showTicketTableView();
+        // Keep tabs alive so user can come back
       }
 
       function getTicketMessages(ticketId) {
@@ -3978,65 +4085,109 @@ For questions: billing@recordrx.com
         return div.innerHTML;
       }
 
-      function renderChatPanel(ticketId) {
-        const ticket = tickets.find(t => t.id === ticketId);
-        if (!ticket) return;
-        const messages = getTicketMessages(ticketId);
-        const container = document.getElementById('openChatPanels');
+      function renderActiveChatPanel() {
+        if (!activeTicketId) { activeChatContainer.innerHTML = ''; return; }
+        // Reload fresh ticket data
+        const freshData = loadAppData();
+        if (freshData?.tickets) tickets = freshData.tickets;
+
+        const ticket = tickets.find(t => t.id === activeTicketId);
+        if (!ticket) { activeChatContainer.innerHTML = '<p class="text-sm text-slate-500 p-4">Ticket not found.</p>'; return; }
+        const messages = getTicketMessages(activeTicketId);
+
         const statusColors = {
           pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
           'in-progress': 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400',
           closed: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
         };
+        const priorityColors = {
+          low: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
+          medium: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+          high: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+          urgent: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+        };
 
-        const panel = document.createElement('div');
-        panel.id = 'chat-panel-' + ticketId;
-        panel.className = 'bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm';
-        panel.innerHTML = `
-          <div class="flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 text-white">
-            <div class="flex items-center gap-3">
-              <span class="font-bold text-sm">${ticketId}</span>
-              <span class="text-xs opacity-90">${escapeHtml(ticket.subject)}</span>
-              <span class="text-[10px] opacity-75">by ${escapeHtml(ticket.customerName || 'Unknown')}</span>
-              <span class="px-2 py-0.5 text-[10px] font-medium rounded-full ${statusColors[ticket.status] || ''}">${(ticket.status || '').replace('-', ' ').toUpperCase()}</span>
+        activeChatContainer.innerHTML = `
+          <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm flex flex-col" style="height: calc(100vh - 220px); min-height: 400px;">
+            <!-- Chat Header -->
+            <div class="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-teal-600 to-cyan-600 text-white flex-shrink-0">
+              <div class="flex items-center gap-3 flex-wrap">
+                <span class="font-bold text-sm">${activeTicketId}</span>
+                <span class="text-xs opacity-90">${escapeHtml(ticket.subject)}</span>
+                <span class="text-[10px] opacity-75">by ${escapeHtml(ticket.customerName || 'Unknown')}</span>
+                <span class="px-2 py-0.5 text-[10px] font-medium rounded-full ${statusColors[ticket.status] || ''}">${(ticket.status || '').replace('-', ' ').toUpperCase()}</span>
+                <span class="px-2 py-0.5 text-[10px] font-medium rounded-full ${priorityColors[ticket.priority] || ''}">${(ticket.priority || '').toUpperCase()}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <select onchange="updateTicketStatusFromChat('${activeTicketId}', this.value)" class="text-[10px] px-2 py-1 border border-white/30 rounded-lg bg-white/10 text-white backdrop-blur-sm">
+                  <option value="pending" ${ticket.status === 'pending' ? 'selected' : ''}>Pending</option>
+                  <option value="in-progress" ${ticket.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+                  <option value="closed" ${ticket.status === 'closed' ? 'selected' : ''}>Closed</option>
+                </select>
+              </div>
             </div>
-            <button onclick="closeTicketChat('${ticketId}')" class="p-1 hover:bg-white/20 rounded-lg transition-colors" title="Close">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-          </div>
-          <div id="chat-messages-${ticketId}" class="p-4 h-64 overflow-y-auto space-y-3 bg-slate-50 dark:bg-slate-950/50">
-            <div class="text-center text-[10px] text-slate-400 dark:text-slate-500 py-1">
-              <span class="bg-slate-200 dark:bg-slate-800 px-3 py-1 rounded-full">Ticket created on ${ticket.createdAt || 'N/A'}</span>
+
+            <!-- Chat Messages -->
+            <div id="chat-messages-${activeTicketId}" class="flex-1 p-4 overflow-y-auto space-y-3 bg-slate-50 dark:bg-slate-950/50">
+              <div class="text-center text-[10px] text-slate-400 dark:text-slate-500 py-1">
+                <span class="bg-slate-200 dark:bg-slate-800 px-3 py-1 rounded-full">Ticket created on ${ticket.createdAt || 'N/A'}</span>
+              </div>
+              ${ticket.description ? `
+                <div class="flex justify-start">
+                  <div class="max-w-[70%] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm">
+                    <p class="text-[10px] font-medium text-teal-600 dark:text-teal-400 mb-1">${escapeHtml(ticket.customerName || 'Customer')} · Initial Description</p>
+                    <p class="text-xs text-slate-700 dark:text-slate-200">${escapeHtml(ticket.description)}</p>
+                    <p class="text-[9px] text-slate-400 mt-1">${ticket.createdAt}</p>
+                  </div>
+                </div>
+              ` : ''}
+              ${messages.map(msg => renderChatBubble(msg)).join('')}
             </div>
-            ${ticket.description ? `
-              <div class="flex justify-start">
-                <div class="max-w-[75%] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm">
-                  <p class="text-[10px] font-medium text-teal-600 dark:text-teal-400 mb-1">${escapeHtml(ticket.customerName || 'Customer')} · Initial Description</p>
-                  <p class="text-xs text-slate-700 dark:text-slate-200">${escapeHtml(ticket.description)}</p>
-                  <p class="text-[9px] text-slate-400 mt-1">${ticket.createdAt}</p>
+
+            <!-- Chat Input -->
+            ${ticket.status !== 'closed' ? `
+              <div class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-shrink-0">
+                <!-- Attachment Preview -->
+                <div id="attach-preview-${activeTicketId}" class="${pendingAttachments[activeTicketId] ? '' : 'hidden'} px-3 pt-2">
+                  ${pendingAttachments[activeTicketId] ? renderAttachmentPreview(activeTicketId) : ''}
+                </div>
+                <div class="flex items-center gap-2 p-3">
+                  <input type="file" id="attach-file-${activeTicketId}" class="hidden" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar,.csv" onchange="handleAttachFile('${activeTicketId}', event)">
+                  <button onclick="triggerAttach('${activeTicketId}')" class="p-2 text-slate-500 hover:text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors flex-shrink-0" title="Attach file">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                  </button>
+                  <input type="text" id="chat-input-${activeTicketId}" placeholder="Type a reply..." 
+                    class="flex-1 px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    onkeydown="if(event.key==='Enter')sendChatMessage('${activeTicketId}')">
+                  <button onclick="sendChatMessage('${activeTicketId}')" class="p-2 bg-teal-600 hover:bg-teal-700 text-white rounded-full transition-colors flex-shrink-0" title="Send">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                  </button>
                 </div>
               </div>
-            ` : ''}
-            ${messages.map(msg => renderChatBubble(msg)).join('')}
+            ` : `
+              <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-center flex-shrink-0">
+                <p class="text-xs text-slate-500 dark:text-slate-400">This ticket is closed. No new messages can be sent.</p>
+              </div>
+            `}
           </div>
-          ${ticket.status !== 'closed' ? `
-            <div class="flex items-center gap-2 p-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-              <input type="text" id="chat-input-${ticketId}" placeholder="Type a reply..." 
-                class="flex-1 px-3 py-2 text-xs border border-slate-200 dark:border-slate-700 rounded-full bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                onkeydown="if(event.key==='Enter')sendChatMessage('${ticketId}')">
-              <button onclick="sendChatMessage('${ticketId}')" class="p-2 bg-teal-600 hover:bg-teal-700 text-white rounded-full transition-colors flex-shrink-0" title="Send">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
-              </button>
-            </div>
-          ` : `
-            <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-center">
-              <p class="text-xs text-slate-500 dark:text-slate-400">This ticket is closed. No new messages can be sent.</p>
-            </div>
-          `}
         `;
-        container.appendChild(panel);
-        const chatBox = document.getElementById('chat-messages-' + ticketId);
-        chatBox.scrollTop = chatBox.scrollHeight;
+
+        // Scroll chat to bottom & focus input
+        const chatBox = document.getElementById('chat-messages-' + activeTicketId);
+        if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
+        const chatInput = document.getElementById('chat-input-' + activeTicketId);
+        if (chatInput) setTimeout(() => chatInput.focus(), 100);
+      }
+
+      function updateTicketStatusFromChat(ticketId, newStatus) {
+        const ticket = tickets.find(t => t.id === ticketId);
+        if (ticket) {
+          ticket.status = newStatus;
+          saveAppData();
+          updateTicketStats();
+          renderActiveChatPanel();
+          renderTicketTabBar();
+        }
       }
 
       function renderChatBubble(msg) {
@@ -4046,21 +4197,119 @@ For questions: billing@recordrx.com
           ? 'bg-teal-600 text-white rounded-2xl rounded-tr-sm'
           : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-2xl rounded-tl-sm';
         const nameColor = isAdmin ? 'text-teal-100' : 'text-cyan-600 dark:text-cyan-400';
+
+        let attachmentHtml = '';
+        if (msg.attachment) {
+          attachmentHtml = renderAttachmentInBubble(msg.attachment, isAdmin);
+        }
+
         return `
           <div class="flex ${alignClass}">
-            <div class="max-w-[75%] ${bubbleClass} px-3 py-2 shadow-sm">
+            <div class="max-w-[70%] ${bubbleClass} px-3 py-2 shadow-sm">
               <p class="text-[10px] font-medium ${nameColor} mb-1">${escapeHtml(msg.senderName || (isAdmin ? 'Admin' : 'Customer'))}</p>
-              <p class="text-xs">${escapeHtml(msg.text)}</p>
+              ${attachmentHtml}
+              ${msg.text ? `<p class="text-xs">${escapeHtml(msg.text)}</p>` : ''}
               <p class="text-[9px] ${isAdmin ? 'text-teal-200' : 'text-slate-400'} mt-1">${msg.timestamp || ''}</p>
             </div>
           </div>
         `;
       }
 
+      function renderAttachmentInBubble(attachment, isOwn) {
+        const linkColor = isOwn ? 'text-teal-100 hover:text-white' : 'text-teal-600 hover:text-teal-700 dark:text-teal-400';
+        if (attachment.type && attachment.type.startsWith('image/')) {
+          return `<div class="mb-1"><img src="${attachment.data}" alt="${escapeHtml(attachment.name)}" class="max-w-full max-h-48 rounded-lg cursor-pointer" onclick="window.open('${attachment.data}','_blank')" title="Click to open full size"></div>`;
+        } else if (attachment.type && attachment.type.startsWith('video/')) {
+          return `<div class="mb-1"><video src="${attachment.data}" controls class="max-w-full max-h-48 rounded-lg"></video></div>`;
+        } else {
+          const sizeStr = attachment.size ? formatFileSize(attachment.size) : '';
+          return `
+            <div class="flex items-center gap-2 mb-1 p-2 rounded-lg ${isOwn ? 'bg-teal-700/40' : 'bg-slate-100 dark:bg-slate-700'}">
+              <svg class="w-5 h-5 flex-shrink-0 ${linkColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+              <div class="min-w-0 flex-1">
+                <a href="${attachment.data}" download="${escapeHtml(attachment.name)}" class="text-xs font-medium ${linkColor} underline truncate block">${escapeHtml(attachment.name)}</a>
+                ${sizeStr ? `<p class="text-[9px] ${isOwn ? 'text-teal-200' : 'text-slate-400'}">${sizeStr}</p>` : ''}
+              </div>
+            </div>`;
+        }
+      }
+
+      function renderAttachmentPreview(ticketId) {
+        const att = pendingAttachments[ticketId];
+        if (!att) return '';
+        let previewContent = '';
+        if (att.type.startsWith('image/')) {
+          previewContent = `<img src="${att.data}" class="h-16 w-16 object-cover rounded-lg" alt="preview">`;
+        } else if (att.type.startsWith('video/')) {
+          previewContent = `<video src="${att.data}" class="h-16 w-20 rounded-lg object-cover"></video>`;
+        } else {
+          previewContent = `<div class="flex items-center gap-1.5 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg"><svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg><span class="text-[10px] text-slate-600 dark:text-slate-300 max-w-[120px] truncate">${escapeHtml(att.name)}</span></div>`;
+        }
+        return `
+          <div class="flex items-center gap-2">
+            ${previewContent}
+            <div class="flex-1 min-w-0">
+              <p class="text-[10px] text-slate-600 dark:text-slate-300 truncate">${escapeHtml(att.name)}</p>
+              <p class="text-[9px] text-slate-400">${formatFileSize(att.size)}</p>
+            </div>
+            <button onclick="removeAttachment('${ticketId}')" class="p-1 text-slate-400 hover:text-red-500 transition-colors" title="Remove">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>`;
+      }
+
+      function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1048576).toFixed(1) + ' MB';
+      }
+
+      function triggerAttach(ticketId) {
+        const fileInput = document.getElementById('attach-file-' + ticketId);
+        if (fileInput) fileInput.click();
+      }
+
+      function handleAttachFile(ticketId, event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const maxSize = 2 * 1024 * 1024; // 2MB limit for localStorage
+        if (file.size > maxSize) {
+          showToast('File size must be under 2MB', 'warning');
+          event.target.value = '';
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          pendingAttachments[ticketId] = {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            data: e.target.result
+          };
+          const preview = document.getElementById('attach-preview-' + ticketId);
+          if (preview) {
+            preview.classList.remove('hidden');
+            preview.innerHTML = renderAttachmentPreview(ticketId);
+          }
+        };
+        reader.readAsDataURL(file);
+        event.target.value = ''; // reset so same file can be re-selected
+      }
+
+      function removeAttachment(ticketId) {
+        delete pendingAttachments[ticketId];
+        const preview = document.getElementById('attach-preview-' + ticketId);
+        if (preview) {
+          preview.classList.add('hidden');
+          preview.innerHTML = '';
+        }
+      }
+
       function sendChatMessage(ticketId) {
         const input = document.getElementById('chat-input-' + ticketId);
         const text = input.value.trim();
-        if (!text) return;
+        const attachment = pendingAttachments[ticketId] || null;
+        if (!text && !attachment) return;
 
         const authState = JSON.parse(localStorage.getItem('radix_state') || '{}');
         const message = {
@@ -4070,13 +4319,23 @@ For questions: billing@recordrx.com
           text,
           timestamp: new Date().toLocaleString()
         };
+        if (attachment) {
+          message.attachment = attachment;
+          delete pendingAttachments[ticketId];
+        }
 
         saveTicketMessage(ticketId, message);
         input.value = '';
 
+        // Clear attachment preview
+        const preview = document.getElementById('attach-preview-' + ticketId);
+        if (preview) { preview.classList.add('hidden'); preview.innerHTML = ''; }
+
         const chatBox = document.getElementById('chat-messages-' + ticketId);
-        chatBox.insertAdjacentHTML('beforeend', renderChatBubble(message));
-        chatBox.scrollTop = chatBox.scrollHeight;
+        if (chatBox) {
+          chatBox.insertAdjacentHTML('beforeend', renderChatBubble(message));
+          chatBox.scrollTop = chatBox.scrollHeight;
+        }
       }
 
       // ===== CALENDAR DATE PICKER =====
@@ -4270,7 +4529,7 @@ For questions: billing@recordrx.com
           dueSelect.innerHTML += `<option value="${i}">${i}${suffix} of every month</option>`;
         }
         // Load saved values
-        const cfg = appData.invoicingConfig || {};
+        const cfg = invoicingConfig || {};
         genSelect.value = cfg.invoiceGenDay || 1;
         dueSelect.value = cfg.invoiceDueDay || 10;
       }
@@ -4278,10 +4537,9 @@ For questions: billing@recordrx.com
       function saveInvoicingConfig() {
         const genDay = parseInt(document.getElementById('invoiceGenDay').value);
         const dueDay = parseInt(document.getElementById('invoiceDueDay').value);
-        if (!appData.invoicingConfig) appData.invoicingConfig = {};
-        appData.invoicingConfig.invoiceGenDay = genDay;
-        appData.invoicingConfig.invoiceDueDay = dueDay;
-        appData.invoicingConfig.emailFrequency = { monthly: 'daily', yearly: 'weekly' };
+        invoicingConfig.invoiceGenDay = genDay;
+        invoicingConfig.invoiceDueDay = dueDay;
+        invoicingConfig.emailFrequency = { monthly: 'daily', yearly: 'weekly' };
         saveAppData();
         showToast('Invoicing configuration saved successfully!', 'success');
       }
@@ -4308,8 +4566,27 @@ For questions: billing@recordrx.com
           return;
         }
 
-        // In production, this would call backend API
-        console.log('Password change requested');
+        // Save new password to localStorage
+        const authState = loadState();
+        const userId = authState?.auth?.email || authState?.auth?.userId;
+
+        // Update password for matching user in users array
+        const matchedUser = users.find(u => u.email === userId);
+        if (matchedUser) {
+          if (matchedUser.password !== current) {
+            showToast('Current password is incorrect', 'error');
+            return;
+          }
+          matchedUser.password = newPass;
+          saveAppData();
+        }
+
+        // Also update in auth state
+        if (authState?.auth) {
+          authState.auth.password = newPass;
+          saveState(authState);
+        }
+
         showToast('Password changed successfully!', 'success');
 
         document.getElementById('currentPassword').value = '';

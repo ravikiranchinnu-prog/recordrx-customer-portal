@@ -1,0 +1,166 @@
+[
+  {
+    "id": "payment_not_reflecting_request",
+    "issueType": "Payment Not Reflecting",
+    "subject": "Payment Received but Not Reflecting in Your Account",
+    "customerQuestions": "Please share the transaction ID or payment reference and a screenshot of the payment confirmation, if available.",
+    "html": "<p>Dear {{customerName}},</p><p>Thank you for reaching out to us.</p><p>We understand that you have made a payment, but it is currently not reflecting in your account. In some cases, payments may take a short time to be confirmed by the payment gateway or bank.</p><p>To help us investigate this further, please share the transaction ID or payment reference number along with a screenshot of the payment confirmation, if available.</p><p>Once we receive these details, we will verify the transaction and update you as soon as possible.</p><p>Best regards,<br/>Support Team</p>"
+  },
+  {
+    "id": "payment_not_reflecting_resolved",
+    "issueType": "Payment Not Reflecting",
+    "subject": "Payment Issue Resolved – {{ticketId}}",
+    "customerQuestions": "",
+    "html": "<p>Dear {{customerName}},</p><p>Good news — we've verified your payment and it is now reflected in your account. The transaction reference is {{transactionId}}.</p><p>If you still do not see the payment, please refresh your account page or let us know and we'll take another look.</p><p>Thank you for your patience.</p><p>Best regards,<br/>Support Team</p>"
+  },
+
+  {
+    "id": "invoice_dispute_request",
+    "issueType": "Invoice Dispute",
+    "subject": "Regarding Your Invoice Concern",
+    "customerQuestions": "Please provide the invoice number and a brief explanation of the concern so our billing team can investigate.",
+    "html": "<p>Dear {{customerName}},</p><p>Thank you for contacting us regarding your invoice.</p><p>We would be happy to review the issue you have raised. Please provide the invoice number along with a brief explanation of the concern so that our billing team can investigate it further.</p><p>Once we receive the details, we will carefully review the invoice and get back to you with the appropriate resolution.</p><p>Best regards,<br/>Support Team</p>"
+  },
+  {
+    "id": "invoice_dispute_resolved",
+    "issueType": "Invoice Dispute",
+    "subject": "Invoice Review Completed – {{invoiceNumber}}",
+    "customerQuestions": "",
+    "html": "<p>Dear {{customerName}},</p><p>We have completed our review of invoice {{invoiceNumber}} and made the following updates: {{resolutionSummary}}.</p><p>If you have further questions or need additional adjustments, please let us know.</p><p>Best regards,<br/>Support Team</p>"
+  },
+
+  {
+    "id": "refund_request_request",
+    "issueType": "Refund Request",
+    "subject": "Refund Request Received – Under Review",
+    "customerQuestions": "Please share your order ID or transaction ID and the reason for the refund request.",
+    "html": "<p>Dear {{customerName}},</p><p>Thank you for contacting us regarding your refund request.</p><p>We have received your request and our team will review it shortly. To proceed further, please share your order ID or transaction ID along with the reason for the refund request.</p><p>Once we verify the transaction details, we will update you on the next steps in accordance with our refund policy.</p><p>Best regards,<br/>Support Team</p>"
+  },
+  {
+    "id": "refund_request_resolved",
+    "issueType": "Refund Request",
+    "subject": "Refund Processed – {{orderId}}",
+    "customerQuestions": "",
+    "html": "<p>Dear {{customerName}},</p><p>We have processed your refund for order/transaction {{orderId}}. The refund of {{amount}} has been initiated and may take 3-7 business days to appear in your account depending on your bank.</p><p>If you have any questions, please reply to this message.</p><p>Best regards,<br/>Support Team</p>"
+  },
+
+  {
+    "id": "payment_failed_request",
+    "issueType": "Payment Failed",
+    "subject": "Assistance Required – Payment Failure",
+    "customerQuestions": "Please share any error messages received or a screenshot of the payment failure so we can investigate.",
+    "html": "<p>Dear {{customerName}},</p><p>Thank you for reaching out.</p><p>We understand that your payment attempt was unsuccessful. Payment failures can sometimes occur due to bank authorization issues, network interruptions, or incorrect payment details.</p><p>We recommend trying the payment again after a few minutes or using a different payment method. If the issue continues, please share any error message you received or a screenshot of the payment failure so we can assist you further.</p><p>Best regards,<br/>Support Team</p>"
+  },
+  {
+    "id": "payment_failed_resolved",
+    "issueType": "Payment Failed",
+    "subject": "Payment Issue Resolved – {{ticketId}}",
+    "customerQuestions": "",
+    "html": "<p>Dear {{customerName}},</p><p>We have investigated the payment failure and the issue has been resolved. You may now retry the payment or use the provided alternative payment method.</p><p>If you prefer, we can also process the payment on your behalf — please confirm and provide authorization.</p><p>Best regards,<br/>Support Team</p>"
+  },
+
+  {
+    "id": "duplicate_payment_request",
+    "issueType": "Duplicate Payment",
+    "subject": "Duplicate Payment Inquiry",
+    "customerQuestions": "Please share the transaction IDs or payment confirmations for both payments so we can verify them.",
+    "html": "<p>Dear {{customerName}},</p><p>Thank you for contacting us regarding the duplicate payment.</p><p>We understand your concern and will review the transaction details. Please share the transaction IDs or payment confirmations for both payments so that we can verify them with our payment provider.</p><p>If a duplicate charge is confirmed, the additional payment will be processed for a refund according to our refund policy.</p><p>Best regards,<br/>Support Team</p>"
+  },
+  {
+    "id": "duplicate_payment_resolved",
+    "issueType": "Duplicate Payment",
+    "subject": "Duplicate Payment Resolved – {{ticketId}}",
+    "customerQuestions": "",
+    "html": "<p>Dear {{customerName}},</p><p>We have verified the transactions and confirmed that a duplicate charge occurred. A refund of {{amount}} has been initiated and will be processed according to our refund policy.</p><p>We apologize for the inconvenience.</p><p>Best regards,<br/>Support Team</p>"
+  },
+
+  {
+    "id": "receipt_missing_request",
+    "issueType": "Receipt Missing",
+    "subject": "Receipt Request – Assistance",
+    "customerQuestions": "Please share your transaction ID or order ID so we can locate and resend the receipt.",
+    "html": "<p>Dear {{customerName}},</p><p>Thank you for reaching out.</p><p>We understand that you have not received your payment receipt. We will be happy to assist you with this.</p><p>Please share your transaction ID or order ID so we can locate the payment in our system and resend the receipt to your registered email address.</p><p>If you need any additional documentation or assistance, please feel free to let us know.</p><p>Best regards,<br/>Support Team</p>"
+  },
+  {
+    "id": "receipt_missing_resolved",
+    "issueType": "Receipt Missing",
+    "subject": "Receipt Sent – {{transactionId}}",
+    "customerQuestions": "",
+    "html": "<p>Dear {{customerName}},</p><p>We have located your payment and resent the receipt to {{emailAddress}}. Please check your inbox and spam folder; if you still do not see it, let us know and we will provide the receipt as an attachment.</p><p>Best regards,<br/>Support Team</p>"
+  },
+
+  {
+    "id": "technical_issue_request",
+    "issueType": "Technical Issue",
+    "subject": "Assistance Required – Technical Issue",
+    "customerQuestions": "Please describe the issue, steps to reproduce, browser/device, and any screenshots or error messages.",
+    "html": "<p>Dear {{customerName}},</p><p>Thank you for reporting this technical issue.</p><p>To help us reproduce and diagnose the problem, please provide a short description of the issue, the steps you took before it occurred, the browser and device you are using, and any screenshots or error messages.</p><p>Once we have these details, our engineering team will investigate and update you with a fix or workaround.</p><p>Best regards,<br/>Support Team</p>"
+  },
+  {
+    "id": "technical_issue_resolved",
+    "issueType": "Technical Issue",
+    "subject": "Issue Resolved – {{ticketId}}",
+    "customerQuestions": "",
+    "html": "<p>Dear {{customerName}},</p><p>The technical issue you reported ({{ticketId}}) has been resolved. The root cause was {{rootCause}} and the fix applied was {{fixSummary}}.</p><p>Please verify on your side and let us know if you encounter any further problems.</p><p>Best regards,<br/>Support Team</p>"
+  },
+
+  {
+    "id": "account_access_request",
+    "issueType": "Account Access",
+    "subject": "Help with Account Access",
+    "customerQuestions": "Please confirm the email associated with your account and any error messages you see when trying to sign in.",
+    "html": "<p>Dear {{customerName}},</p><p>We understand you're having trouble accessing your account.</p><p>Please confirm the email address registered with your account and share any error messages or screenshots you see when attempting to sign in. If you've forgotten your password, you can also try the password reset link.</p><p>Best regards,<br/>Support Team</p>"
+  },
+  {
+    "id": "account_access_resolved",
+    "issueType": "Account Access",
+    "subject": "Account Access Restored",
+    "customerQuestions": "",
+    "html": "<p>Dear {{customerName}},</p><p>Your account access issue has been resolved. You should now be able to sign in using {{email}}. If you changed your password, please use the new password or reset it using the 'Forgot password' link.</p><p>If you still face issues, reply to this message.</p><p>Best regards,<br/>Support Team</p>"
+  },
+
+  {
+    "id": "feature_request_request",
+    "issueType": "Feature Request",
+    "subject": "Thanks for the Feature Suggestion",
+    "customerQuestions": "Please describe the feature you'd like and how it would help your workflow.",
+    "html": "<p>Dear {{customerName}},</p><p>Thank you for suggesting a new feature.</p><p>Please provide a short description of the feature you'd like and how it would improve your workflow. Our product team reviews requests and prioritizes based on impact and feasibility.</p><p>We will keep you updated on its progress.</p><p>Best regards,<br/>Support Team</p>"
+  },
+  {
+    "id": "feature_request_resolved",
+    "issueType": "Feature Request",
+    "subject": "Update on Your Feature Request",
+    "customerQuestions": "",
+    "html": "<p>Dear {{customerName}},</p><p>Thanks again for your suggestion. We wanted to update you that the request {{requestId}} has been reviewed and the current status is: {{status}}.</p><p>We appreciate your input and will notify you of any progress.</p><p>Best regards,<br/>Support Team</p>"
+  },
+
+  {
+    "id": "subscription_change_request",
+    "issueType": "Subscription Change",
+    "subject": "Request to Change Subscription",
+    "customerQuestions": "Please confirm the plan you'd like to switch to and the desired effective date.",
+    "html": "<p>Dear {{customerName}},</p><p>We received your request to change your subscription.</p><p>Please confirm which plan you'd like to switch to and the desired effective date. Once confirmed, we'll process the change and provide any pro-rated billing details if applicable.</p><p>Best regards,<br/>Support Team</p>"
+  },
+  {
+    "id": "subscription_change_resolved",
+    "issueType": "Subscription Change",
+    "subject": "Subscription Updated – {{subscriptionName}}",
+    "customerQuestions": "",
+    "html": "<p>Dear {{customerName}},</p><p>Your subscription has been updated to {{subscriptionName}} effective {{effectiveDate}}. Any billing adjustments have been applied to your account.</p><p>If you have questions, please reply to this email.</p><p>Best regards,<br/>Support Team</p>"
+  },
+
+  {
+    "id": "general_inquiry_request",
+    "issueType": "General Inquiry",
+    "subject": "Thanks for Reaching Out",
+    "customerQuestions": "Please provide more details about your question so we can assist appropriately.",
+    "html": "<p>Dear {{customerName}},</p><p>Thank you for contacting us.</p><p>Please provide more details about your question so we can assist you appropriately. Include any relevant account or order information if applicable.</p><p>Best regards,<br/>Support Team</p>"
+  },
+  {
+    "id": "general_inquiry_resolved",
+    "issueType": "General Inquiry",
+    "subject": "Your Question – Resolved",
+    "customerQuestions": "",
+    "html": "<p>Dear {{customerName}},</p><p>We've addressed your inquiry: {{summary}}.</p><p>If you need further assistance, please let us know.</p><p>Best regards,<br/>Support Team</p>"
+  }
+]

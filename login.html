@@ -123,24 +123,6 @@
           return;
         }
 
-        // Super Admin authentication
-        if (userId === 'ravikiran' && password === 'Tester@1') {
-          const next = loadState() || state;
-          next.auth = { userId, isAuthed: true, role: 'superadmin', name: 'Ravikiran' };
-          saveState(next);
-          window.location.href = './admin.html';
-          return;
-        }
-
-        // Customer authentication (hardcoded)
-        if (userId === 'keepmailingravz@gmail.com' && password === 'Tester@1') {
-          const next = loadState() || state;
-          next.auth = { userId, isAuthed: true, role: 'customer', name: 'Ravikiran', email: 'keepmailingravz@gmail.com', customerId: 'CUST001' };
-          saveState(next);
-          window.location.href = './customer.html';
-          return;
-        }
-
         // Dynamic authentication — check users/customers created by admin
         const DATA_KEY = 'radix_data';
         const savedData = JSON.parse(localStorage.getItem(DATA_KEY) || '{}');
@@ -166,6 +148,24 @@
         if (matchedCustomer) {
           const next = loadState() || state;
           next.auth = { userId: matchedCustomer.email, isAuthed: true, role: 'customer', name: matchedCustomer.name, email: matchedCustomer.email, customerId: matchedCustomer.id };
+          saveState(next);
+          window.location.href = './customer.html';
+          return;
+        }
+
+        // Super Admin authentication (default credentials)
+        if (userId === 'ravikiran' && password === 'Tester@1') {
+          const next = loadState() || state;
+          next.auth = { userId, isAuthed: true, role: 'superadmin', name: 'Ravikiran' };
+          saveState(next);
+          window.location.href = './admin.html';
+          return;
+        }
+
+        // Customer authentication (default credentials)
+        if (userId === 'keepmailingravz@gmail.com' && password === 'Tester@1') {
+          const next = loadState() || state;
+          next.auth = { userId, isAuthed: true, role: 'customer', name: 'Ravikiran', email: 'keepmailingravz@gmail.com', customerId: 'CUST001' };
           saveState(next);
           window.location.href = './customer.html';
           return;

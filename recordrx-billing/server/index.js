@@ -3,6 +3,9 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const PDFDocument = require('pdfkit');
+const fs = require('fs');
+const path = require('path');
+const nodemailer = require('nodemailer');
 
 const Customer = require('../src/models/Customer');
 const Bill = require('../src/models/Bill');
@@ -12,6 +15,19 @@ const emailConfig = require('./config/email.config');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Email transporter for custom ticket templates
+const createDraftTransporter = () => {
+  return nodemailer.createTransport({
+    host: emailConfig.EMAIL_HOST,
+    port: emailConfig.EMAIL_PORT,
+    secure: emailConfig.EMAIL_SECURE,
+    auth: {
+      user: emailConfig.EMAIL_USER,
+      pass: emailConfig.EMAIL_PASSWORD
+    }
+  });
+};
 
 // Middleware
 app.use(cors());
@@ -442,21 +458,51 @@ app.get('/api/dashboard/stats', async (req, res) => {
   try {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    
+
+    // Revenue chart: last 6 months of paid invoice amounts
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const revenueByMonth = await Payment.aggregate([
+      { $match: { paymentDate: { $gte: sixMonthsAgo }, status: 'completed' } },
+      { $group: { _id: { y: { $year: '$paymentDate' }, m: { $month: '$paymentDate' } }, total: { $sum: '$amount' } } },
+      { $sort: { '_id.y': 1, '_id.m': 1 } }
+    ]);
+    // Build a 6-month array with labels
+    const revenueChart = [];
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const y = d.getFullYear(), m = d.getMonth() + 1;
+      const found = revenueByMonth.find(r => r._id.y === y && r._id.m === m);
+      revenueChart.push({ label: monthNames[m - 1], value: found ? found.total : 0 });
+    }
+
     const [
       totalCustomers,
       activeCustomers,
       totalBills,
-      pendingBills,
-      overdueBills,
+      allBills,
+      openTickets,
+      totalTickets,
+      pendingTickets,
+      inProgressTickets,
+      closedTickets,
+      totalUsers,
       monthlyRevenue,
-      monthlyPayments
+      monthlyPayments,
+      monthlyPlanCount,
+      yearlyPlanCount,
+      totalPaidAmount
     ] = await Promise.all([
       Customer.countDocuments(),
       Customer.countDocuments({ status: 'active' }),
       Bill.countDocuments(),
-      Bill.find({ status: { $in: ['pending', 'partial'] } }),
-      Bill.find({ status: 'overdue' }),
+      Bill.find({}),
+      require('./models/Ticket') ? require('./models/Ticket').countDocuments({ status: { $in: ['open','in-progress'] } }).catch(() => 0) : Promise.resolve(0),
+      require('./models/Ticket') ? require('./models/Ticket').countDocuments().catch(() => 0) : Promise.resolve(0),
+      require('./models/Ticket') ? require('./models/Ticket').countDocuments({ status: 'open' }).catch(() => 0) : Promise.resolve(0),
+      require('./models/Ticket') ? require('./models/Ticket').countDocuments({ status: 'in-progress' }).catch(() => 0) : Promise.resolve(0),
+      require('./models/Ticket') ? require('./models/Ticket').countDocuments({ status: { $in: ['resolved','closed'] } }).catch(() => 0) : Promise.resolve(0),
+      require('./models/User') ? require('./models/User').countDocuments().catch(() => 0) : Promise.resolve(0),
       Bill.aggregate([
         { $match: { issueDate: { $gte: startOfMonth } } },
         { $group: { _id: null, total: { $sum: '$totalAmount' } } }
@@ -464,18 +510,57 @@ app.get('/api/dashboard/stats', async (req, res) => {
       Payment.aggregate([
         { $match: { paymentDate: { $gte: startOfMonth }, status: 'completed' } },
         { $group: { _id: null, total: { $sum: '$amount' } } }
+      ]),
+      Customer.countDocuments({ billingCycle: 'monthly' }),
+      Customer.countDocuments({ billingCycle: 'yearly' }),
+      Payment.aggregate([
+        { $match: { status: 'completed' } },
+        { $group: { _id: null, total: { $sum: '$amount' } } }
       ])
     ]);
-    
+
+    const pendingBills = allBills.filter(b => ['pending','partial'].includes(b.status));
+    const overdueBills = allBills.filter(b => b.status === 'overdue');
+    const paidBills = allBills.filter(b => b.status === 'paid');
+    const totalInvoicedAmount = allBills.reduce((s, b) => s + (b.totalAmount || 0), 0);
+    const totalCollected = totalPaidAmount[0]?.total || 0;
+    const collectionRate = totalInvoicedAmount > 0 ? Math.round((totalCollected / totalInvoicedAmount) * 100) : 0;
+
+    // Donut chart data
+    const donutData = {
+      paid: paidBills.length,
+      pending: pendingBills.length,
+      overdue: overdueBills.length,
+      total: allBills.length
+    };
+
     res.json({
       totalCustomers,
       activeCustomers,
       totalBills,
-      pendingAmount: pendingBills.reduce((sum, b) => sum + b.balanceDue, 0),
-      overdueAmount: overdueBills.reduce((sum, b) => sum + b.balanceDue, 0),
+      pendingAmount: pendingBills.reduce((sum, b) => sum + (b.balanceDue || 0), 0),
+      overdueAmount: overdueBills.reduce((sum, b) => sum + (b.balanceDue || 0), 0),
       overdueCount: overdueBills.length,
+      pendingCount: pendingBills.length,
       monthlyRevenue: monthlyRevenue[0]?.total || 0,
-      monthlyCollections: monthlyPayments[0]?.total || 0
+      monthlyCollections: monthlyPayments[0]?.total || 0,
+      totalRevenue: totalCollected,
+      totalOutstanding: totalInvoicedAmount - totalCollected,
+      // Charts
+      revenueChart,
+      donutData,
+      // Quick insights
+      collectionRate,
+      monthlyPlanCount,
+      yearlyPlanCount,
+      // Tickets
+      openTickets,
+      totalTickets,
+      pendingTickets,
+      inProgressTickets,
+      closedTickets,
+      // Users
+      totalUsers
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -575,6 +660,64 @@ app.get('/api/email/config', (req, res) => {
       reminderDaysBeforeDue: emailConfig.REMINDER_DAYS_BEFORE_DUE
     }
   });
+});
+
+// Get predefined email drafts for ticket responses
+app.get('/api/email/drafts', (req, res) => {
+  try {
+    const file = path.join(__dirname, 'config', 'emailDrafts.json');
+    if (!fs.existsSync(file)) return res.json([]);
+    const raw = fs.readFileSync(file, 'utf8');
+    const drafts = JSON.parse(raw || '[]');
+    res.json(
+      drafts.map(d => ({
+        id: d.id,
+        subject: d.subject,
+        issueType: d.issueType,
+        customerQuestions: d.customerQuestions || '',
+        html: d.html || ''
+      }))
+    );
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Send a selected email draft to a customer
+app.post('/api/email/send-draft', async (req, res) => {
+  try {
+    const { draftId, to, templateData } = req.body;
+    if (!draftId || !to) {
+      return res.status(400).json({ error: 'draftId and recipient email are required' });
+    }
+
+    const file = path.join(__dirname, 'config', 'emailDrafts.json');
+    if (!fs.existsSync(file)) {
+      return res.status(404).json({ error: 'Drafts configuration not found' });
+    }
+
+    const drafts = JSON.parse(fs.readFileSync(file, 'utf8') || '[]');
+    const draft = drafts.find(d => d.id === draftId);
+    if (!draft) {
+      return res.status(404).json({ error: 'Draft not found' });
+    }
+
+    const data = templateData || {};
+    const tpl = (str = '') =>
+      str.replace(/\{\{\s*(.*?)\s*\}\}/g, (_, key) => (data[key] != null ? String(data[key]) : ''));
+
+    const transporter = createDraftTransporter();
+    await transporter.sendMail({
+      from: `${emailConfig.EMAIL_FROM_NAME} <${emailConfig.EMAIL_FROM_ADDRESS}>`,
+      to: Array.isArray(to) ? to.join(',') : to,
+      subject: tpl(draft.subject),
+      html: tpl(draft.html || '')
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Send welcome email to new customer/user
