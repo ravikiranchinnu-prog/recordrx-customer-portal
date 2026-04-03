@@ -56,11 +56,16 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message || 'Internal Server Error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`RECORDRx API server running on port ${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`RECORDRx API server running on port ${PORT}`);
+  });
+}
 
 module.exports = app;
+
+// ── Cron jobs only run when not in serverless (Vercel) environment ──
+if (!process.env.VERCEL) {
 
 // ── Cron: Auto-generate prepaid bills on the 1st of every month at 00:05 ──
 cron.schedule('5 0 1 * *', async () => {
@@ -205,6 +210,8 @@ cron.schedule('0 8 2 * *', async () => {
       console.log(`⚠️ Monthly report not sent: ${result.reason}`);
     }
   } catch (err) {
-    console.error('❌ Cron monthly report error:', err.message);
+    console.error('Cron monthly report error:', err.message);
   }
 });
+
+} // end if (!process.env.VERCEL)
