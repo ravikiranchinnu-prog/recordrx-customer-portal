@@ -5,7 +5,7 @@ const { auth, adminOnly } = require('../middleware/auth');
 // GET /api/offers
 router.get('/', auth, async (req, res) => {
   try {
-    const offers = await Offer.find().sort({ createdAt: -1 });
+    const offers = await Offer.find().populate('applicableCustomers', 'name customerId').sort({ createdAt: -1 });
     res.json(offers);
   } catch (error) {
     res.status(500).json({ error: error.message });

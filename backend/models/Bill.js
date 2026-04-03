@@ -33,8 +33,10 @@ const BillSchema = new mongoose.Schema({
     enum: ['draft', 'pending', 'partial', 'paid', 'overdue', 'cancelled'],
     default: 'pending'
   },
+  billingType: { type: String, enum: ['prepaid', 'postpaid'], default: 'prepaid' },
   issueDate: { type: Date, default: Date.now },
   dueDate: { type: Date, required: true },
+  graceDate: { type: Date },
   paidDate: Date,
   notes: String,
   internalNotes: String,

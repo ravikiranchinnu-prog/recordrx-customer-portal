@@ -6,7 +6,7 @@ const { auth } = require('../middleware/auth');
 const generateToken = (user) => {
   return jwt.sign(
     { id: user._id, role: user.role, email: user.email },
-    process.env.JWT_SECRET || 'radix-secret-key',
+    process.env.JWT_SECRET || 'recordrx-secret-key',
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
 };

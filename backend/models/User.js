@@ -12,10 +12,12 @@ const UserSchema = new mongoose.Schema({
   },
   phone: { type: String, default: '' },
   company: { type: String, default: '' },
+  address: { type: String, default: '' },
   // For customer role - links to a plan/offer
   plan: { type: String, default: '' },
   planType: { type: String, enum: ['monthly', 'yearly', ''], default: '' },
   offer: { type: String, default: '' },
+  offerMonths: { type: Number, default: 0 },
   customerId: { type: String, default: '' }, // e.g. CUST00001
   status: {
     type: String,

@@ -4,6 +4,7 @@ import api from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/Toast';
 import TicketChat from '@/components/TicketChat';
+import DateRangePicker from '@/components/DateRangePicker';
 
 export default function CustomerTickets() {
   const [tickets, setTickets] = useState([]);
@@ -13,12 +14,28 @@ export default function CustomerTickets() {
   const { user } = useAuth();
   const { showToast } = useToast();
 
+  // Filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
   // Tabbed chat state
   const [openChats, setOpenChats] = useState([]);
   const [activeTabId, setActiveTabId] = useState(null);
 
   const loadTickets = async () => {
-    try { const data = await api.getTickets(); setTickets(data || []); }
+    try { 
+      const data = await api.getTickets(); 
+      setTickets(data || []);
+      // Also update openChats with the latest ticket data
+      setOpenChats(prevOpenChats => 
+        prevOpenChats.map(openChat => {
+          const updatedTicket = data.find(t => t._id === openChat._id);
+          return updatedTicket || openChat;
+        })
+      );
+    }
     catch (err) { showToast(err.message, 'error'); }
     finally { setLoading(false); }
   };
@@ -58,16 +75,24 @@ export default function CustomerTickets() {
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div></div>;
 
+  const filteredTickets = tickets.filter(t => {
+    if (statusFilter !== 'all' && t.status !== statusFilter) return false;
+    if (searchTerm && !t.ticketId?.toLowerCase().includes(searchTerm.toLowerCase()) && !t.subject?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    if (dateFrom && new Date(t.createdAt) < new Date(dateFrom)) return false;
+    if (dateTo && new Date(t.createdAt) > new Date(dateTo + 'T23:59:59.999')) return false;
+    return true;
+  });
+
   return (
     <div className="animate-fadeIn space-y-4">
-      {/* Ticket Stats — matching customer.html: hover-card, rounded-lg, no icons, text-xs labels */}
+      {/* Ticket Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="hover-card bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-3">
           <p className="text-xs text-slate-500 dark:text-slate-400">Total Tickets</p>
           <p className="text-lg font-bold text-slate-900 dark:text-white">{tickets.length}</p>
         </div>
         <div className="hover-card bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-3">
-          <p className="text-xs text-slate-500 dark:text-slate-400">Pending</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Open</p>
           <p className="text-lg font-bold text-amber-600">{tickets.filter(t => t.status === 'open').length}</p>
         </div>
         <div className="hover-card bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-3">
@@ -80,8 +105,15 @@ export default function CustomerTickets() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div></div>
+      <div className="flex items-center gap-3 flex-wrap">
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+          className="px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+          <option value="all">All Status</option><option value="open">Open</option><option value="in-progress">In Progress</option><option value="resolved">Resolved</option><option value="closed">Closed</option>
+        </select>
+        <input type="text" placeholder="Search tickets..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+          className="w-48 px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200" />
+        <DateRangePicker dateFrom={dateFrom} dateTo={dateTo} onChange={(from, to) => { setDateFrom(from); setDateTo(to); }} />
+        <div className="flex-1"></div>
         <button onClick={() => setShowCreate(!showCreate)} className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium rounded-lg">+ Raise Ticket</button>
       </div>
 
@@ -149,8 +181,8 @@ export default function CustomerTickets() {
             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Updated</th>
           </tr></thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {tickets.length === 0 ? <tr><td colSpan="5" className="text-center py-8 text-slate-400">No tickets yet</td></tr> :
-              tickets.map(t => (
+            {filteredTickets.length === 0 ? <tr><td colSpan="5" className="text-center py-8 text-slate-400">No tickets yet</td></tr> :
+              filteredTickets.map(t => (
                 <tr key={t._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="px-4 py-3 font-medium text-teal-600 cursor-pointer hover:underline" onClick={() => openChat(t)}>{t.ticketId}</td>
                   <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{t.subject}</td>

@@ -1,7 +1,7 @@
 {
-  "name": "radix-backend",
+  "name": "recordrx-backend",
   "version": "1.0.0",
-  "description": "Radix Customer Management Portal - Backend API",
+  "description": "RecordRx Customer Management Portal - Backend API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

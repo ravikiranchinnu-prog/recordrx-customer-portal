@@ -153,13 +153,23 @@ export default function TicketChat({ ticket, currentRole, onStatusChange, onMess
   };
 
   const htmlToPlain = (html = '') => {
-    return html
+    // Decode HTML entities first
+    const txt = document.createElement('textarea');
+    txt.innerHTML = html;
+    let result = txt.value;
+    
+    // Replace common HTML tags with appropriate spacing
+    result = result
       .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<p[^>]*>/gi, '')
       .replace(/<\/p>/gi, '\n')
+      .replace(/<\/div>/gi, '\n')
+      .replace(/<\/li>/gi, '\n')
+      .replace(/<li[^>]*>/gi, '• ')
       .replace(/<[^>]+>/g, '')
-      .replace(/\n{2,}/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
       .trim();
+    
+    return result;
   };
 
   const filteredDrafts = drafts.filter((d) => {
@@ -198,11 +208,14 @@ export default function TicketChat({ ticket, currentRole, onStatusChange, onMess
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
+    // Expand fully for drafts, otherwise limit to 220px
+    const maxHeight = selectedDraft ? 'none' : '220px';
+    el.style.height = selectedDraft ? `${Math.min(el.scrollHeight, window.innerHeight - 300)}px` : `${Math.min(el.scrollHeight, 220)}px`;
+    el.style.maxHeight = maxHeight;
   };
   useEffect(() => {
     resizeTextarea();
-  }, [text]);
+  }, [text, selectedDraft]);
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm flex flex-col" style={{ height: 'calc(100vh - 220px)', minHeight: '400px' }}>

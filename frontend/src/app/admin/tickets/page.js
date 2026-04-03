@@ -4,14 +4,19 @@ import api from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/Toast';
 import TicketChat from '@/components/TicketChat';
+import DateRangePicker from '@/components/DateRangePicker';
 
 export default function TicketsPage() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ subject: '', priority: 'medium', message: '' });
   const { user } = useAuth();
   const { showToast } = useToast();
+
+  // Filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   // Tabbed chat state
   const [openChats, setOpenChats] = useState([]);
@@ -24,16 +29,6 @@ export default function TicketsPage() {
   };
 
   useEffect(() => { loadTickets(); }, []);
-
-  const createTicket = async (e) => {
-    e.preventDefault();
-    try {
-      await api.createTicket({ subject: form.subject, priority: form.priority, message: form.message });
-      showToast('Ticket created!', 'success');
-      setShowCreate(false); setForm({ subject: '', priority: 'medium', message: '' });
-      loadTickets();
-    } catch (err) { showToast(err.message, 'error'); }
-  };
 
   const openChat = (ticket) => {
     if (!openChats.find(c => c._id === ticket._id)) {
@@ -64,14 +59,17 @@ export default function TicketsPage() {
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div></div>;
 
+  const filteredTickets = tickets.filter(t => {
+    if (statusFilter !== 'all' && t.status !== statusFilter) return false;
+    if (searchTerm && !t.ticketId?.toLowerCase().includes(searchTerm.toLowerCase()) && !t.subject?.toLowerCase().includes(searchTerm.toLowerCase()) && !t.createdBy?.name?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    if (dateFrom && new Date(t.createdAt) < new Date(dateFrom)) return false;
+    if (dateTo && new Date(t.createdAt) > new Date(dateTo + 'T23:59:59.999')) return false;
+    return true;
+  });
+
   return (
     <div className="animate-fadeIn">
-      <div className="flex items-center justify-between mb-6">
-        <div></div>
-        <button onClick={() => setShowCreate(!showCreate)} className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium rounded-lg">+ New Ticket</button>
-      </div>
-
-      {/* Ticket Stats — matching admin.html: Icon LEFT (gradient), Text RIGHT */}
+      {/* Ticket Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <div className="dashboard-card hover-card bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3 flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-teal-600 flex items-center justify-center flex-shrink-0">
@@ -87,7 +85,7 @@ export default function TicketsPage() {
             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           </div>
           <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Pending</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Open</p>
             <p className="text-xl font-bold text-amber-600">{tickets.filter(t => t.status === 'open').length}</p>
           </div>
         </div>
@@ -111,25 +109,16 @@ export default function TicketsPage() {
         </div>
       </div>
 
-      {showCreate && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 mb-6 animate-fadeIn">
-          <h2 className="text-lg font-semibold mb-4 text-slate-800 dark:text-white">Create Ticket</h2>
-          <form onSubmit={createTicket} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div><label className="text-xs font-medium text-slate-600 dark:text-slate-400">Subject</label><input value={form.subject} onChange={(e) => setForm({...form, subject: e.target.value})} required className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200" /></div>
-            <div>
-              <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Priority</label>
-              <select value={form.priority} onChange={(e) => setForm({...form, priority: e.target.value})} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
-                <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="urgent">Urgent</option>
-              </select>
-            </div>
-            <div className="md:col-span-2"><label className="text-xs font-medium text-slate-600 dark:text-slate-400">Message</label><textarea value={form.message} onChange={(e) => setForm({...form, message: e.target.value})} required rows={3} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200" /></div>
-            <div className="md:col-span-2 flex gap-3">
-              <button type="submit" className="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg">Create</button>
-              <button type="button" onClick={() => setShowCreate(false)} className="px-6 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-lg">Cancel</button>
-            </div>
-          </form>
-        </div>
-      )}
+      {/* Filter Bar */}
+      <div className="flex items-center gap-3 flex-wrap mb-4">
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+          className="px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+          <option value="all">All Status</option><option value="open">Open</option><option value="in-progress">In Progress</option><option value="resolved">Resolved</option><option value="closed">Closed</option>
+        </select>
+        <input type="text" placeholder="Search tickets..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+          className="w-48 px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200" />
+        <DateRangePicker dateFrom={dateFrom} dateTo={dateTo} onChange={(from, to) => { setDateFrom(from); setDateTo(to); }} />
+      </div>
 
       {/* Open Chat Tabs */}
       {openChats.length > 0 && (
@@ -169,8 +158,8 @@ export default function TicketsPage() {
             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Actions</th>
           </tr></thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {tickets.length === 0 ? <tr><td colSpan="7" className="text-center py-8 text-slate-400">No tickets</td></tr> :
-              tickets.map(t => (
+            {filteredTickets.length === 0 ? <tr><td colSpan="7" className="text-center py-8 text-slate-400">No tickets</td></tr> :
+              filteredTickets.map(t => (
                 <tr key={t._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="px-4 py-3 font-medium text-teal-600 cursor-pointer hover:underline" onClick={() => openChat(t)}>{t.ticketId}</td>
                   <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{t.subject}</td>

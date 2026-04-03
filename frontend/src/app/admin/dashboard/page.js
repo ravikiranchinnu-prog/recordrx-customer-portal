@@ -1,13 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
+import DateRangePicker from '@/components/DateRangePicker';
 
 /* ── Helpers ── */
-const fmt = (v) => {
-  if (v >= 100000) return '₹' + (v / 100000).toFixed(1) + 'L';
-  if (v >= 1000) return '₹' + (v / 1000).toFixed(1) + 'k';
-  return '₹' + v.toLocaleString('en-IN');
-};
+const fmt = (v) => '₹' + Number(v || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
 
 /* ── Stat Card — exact match to admin.html layout ──
    Icon LEFT + Badge RIGHT (top row), then Value, then Label */
@@ -38,7 +35,7 @@ const RevenueChart = ({ data }) => {
       <div className="h-48 flex items-end gap-2 px-2">
         {data.map((d, i) => {
           const pct = (d.value / max) * 100;
-          const val = d.value >= 1000 ? '₹' + (d.value / 1000).toFixed(1) + 'k' : '₹' + d.value;
+          const val = '₹' + Number(d.value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
           return (
             <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
               <span className="text-[9px] text-slate-500 mb-1">{val}</span>
@@ -198,13 +195,43 @@ const QuickInsights = ({ stats }) => (
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [sendingReport, setSendingReport] = useState(false);
+  const [reportMsg, setReportMsg] = useState('');
+  const [reportMonth, setReportMonth] = useState(() => {
+    const now = new Date();
+    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+  });
 
-  useEffect(() => {
-    api.getDashboardStats()
+  const loadStats = () => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (dateFrom) params.set('startDate', dateFrom);
+    if (dateTo) params.set('endDate', dateTo);
+    api.getDashboardStats(params.toString())
       .then(data => setStats(data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadStats(); }, [dateFrom, dateTo]);
+
+  const handleSendReport = async () => {
+    setSendingReport(true);
+    setReportMsg('');
+    try {
+      const [y, m] = reportMonth.split('-').map(Number);
+      const res = await api.sendMonthlyReport(y, m - 1);
+      setReportMsg(res.message || 'Report sent successfully!');
+    } catch (err) {
+      setReportMsg(err.message || 'Failed to send report');
+    } finally {
+      setSendingReport(false);
+      setTimeout(() => setReportMsg(''), 5000);
+    }
+  };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div></div>;
 
@@ -230,14 +257,28 @@ export default function AdminDashboard() {
           icon="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
       </div>
 
-      {/* Select Date Range — matching admin.html */}
-      <div>
-        <button className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-white rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-sm">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          Select Date Range
-        </button>
+      {/* Select Date Range + Send Report */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <DateRangePicker dateFrom={dateFrom} dateTo={dateTo} onChange={(from, to) => { setDateFrom(from); setDateTo(to); }} />
+        <div className="flex items-center gap-3">
+          {reportMsg && <span className="text-xs text-teal-600 dark:text-teal-400 font-medium">{reportMsg}</span>}
+          <input
+            type="month"
+            value={reportMonth}
+            onChange={(e) => setReportMonth(e.target.value)}
+            className="px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+          />
+          <button
+            onClick={handleSendReport}
+            disabled={sendingReport}
+            className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            {sendingReport ? 'Sending...' : 'Send Monthly Report'}
+          </button>
+        </div>
       </div>
 
       {/* Charts Row — 2 cols */}

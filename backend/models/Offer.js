@@ -2,12 +2,12 @@ const mongoose = require('mongoose');
 
 const OfferSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  description: { type: String, default: '' },
   discountPercent: { type: Number, default: 0 },
   discountAmount: { type: Number, default: 0 },
   validFrom: { type: Date },
   validUntil: { type: Date },
   applicablePlans: [{ type: String }],
+  applicableCustomers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Customer' }],
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }

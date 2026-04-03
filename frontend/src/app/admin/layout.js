@@ -10,6 +10,7 @@ const pageTitles = {
   '/admin/invoicing': 'Invoicing & Payment',
   '/admin/customers': 'My Customers',
   '/admin/tickets': 'Tickets',
+  '/admin/plans': 'Plans',
   '/admin/customer-mgmt': 'Customer Management',
   '/admin/user-mgmt': 'User Management',
   '/admin/settings': 'Settings',

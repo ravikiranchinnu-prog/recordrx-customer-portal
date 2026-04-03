@@ -8,7 +8,7 @@ class ApiClient {
 
   getToken() {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('radix_token');
+      return localStorage.getItem('recordrx_token');
     }
     return null;
   }
@@ -39,7 +39,7 @@ class ApiClient {
   changePassword(data) { return this.put('/auth/change-password', data); }
 
   // Dashboard
-  getDashboardStats() { return this.get('/dashboard/stats'); }
+  getDashboardStats(params = '') { return this.get(`/dashboard/stats${params ? '?' + params : ''}`); }
 
   // Users
   getUsers() { return this.get('/users'); }
@@ -134,6 +134,12 @@ class ApiClient {
     }
   }
   sendDraft(draftId, to, templateData = {}) { return this.post('/email/send-draft', { draftId, to, templateData }); }
+  sendMonthlyReport(year, month) { return this.post('/email/send-monthly-report', { year, month }); }
+
+  // Notifications
+  getNotifications() { return this.get('/notifications'); }
+  markNotificationRead(key) { return this.put(`/notifications/${encodeURIComponent(key)}/read`); }
+  markAllNotificationsRead(keys) { return this.put('/notifications/read-all', { keys }); }
 }
 
 const api = new ApiClient();

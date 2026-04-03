@@ -29,7 +29,7 @@ async function seed() {
   const custExisting = await User.findOne({ email: 'keepmailingravz@gmail.com' });
   if (!custExisting) {
     await User.create({
-      name: 'Ravi (Customer)',
+      name: 'Ravi',
       email: 'keepmailingravz@gmail.com',
       password: 'Tester@1',
       role: 'customer',

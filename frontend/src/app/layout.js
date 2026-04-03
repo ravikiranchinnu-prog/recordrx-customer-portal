@@ -4,8 +4,8 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ToastProvider } from '@/components/Toast';
 
 export const metadata = {
-  title: 'Radix - Customer Management Portal',
-  description: 'The Root of Reliability'
+  title: 'RECORDRx - Customer Management Portal',
+  description: 'FUTURE OF PATIENT CARE - POWERED BY AI'
 };
 
 export default function RootLayout({ children }) {

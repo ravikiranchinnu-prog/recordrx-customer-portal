@@ -38,6 +38,27 @@ router.get('/stats', auth, async (req, res) => {
         } catch (e) {}
       }
 
+      // Check for overdue/due-soon bills for popup alert
+      const now2 = new Date();
+      const overdueBills = myBills.filter(b =>
+        ['pending', 'partial', 'overdue'].includes(b.status) && b.dueDate && new Date(b.dueDate) < now2
+      );
+      const dueSoonBills = myBills.filter(b =>
+        ['pending', 'partial'].includes(b.status) && b.dueDate &&
+        new Date(b.dueDate) >= now2 &&
+        (new Date(b.dueDate) - now2) <= 3 * 24 * 60 * 60 * 1000
+      );
+      const overdueAlert = overdueBills.length > 0 ? {
+        type: 'overdue',
+        count: overdueBills.length,
+        totalDue: overdueBills.reduce((s, b) => s + (b.balanceDue || 0), 0),
+        graceDatePassed: overdueBills.some(b => b.graceDate && new Date(b.graceDate) < now2)
+      } : dueSoonBills.length > 0 ? {
+        type: 'due-soon',
+        count: dueSoonBills.length,
+        totalDue: dueSoonBills.reduce((s, b) => s + (b.balanceDue || 0), 0)
+      } : null;
+
       return res.json({
         totalInvoices: myBills.length,
         pendingInvoices: myBills.filter(b => ['pending', 'partial', 'overdue'].includes(b.status)).length,
@@ -47,11 +68,33 @@ router.get('/stats', auth, async (req, res) => {
         totalPaid,
         outstandingAmount: totalDue,
         recentInvoices,
-        plan, planType, offer
+        plan, planType, offer,
+        overdueAlert
       });
     }
 
     // ── Admin dashboard stats ──
+
+    // Date range filter support
+    const { startDate, endDate } = req.query;
+    let dateFilter = {};
+    let paymentDateFilter = {};
+    if (startDate || endDate) {
+      dateFilter = {};
+      paymentDateFilter = {};
+      if (startDate) {
+        dateFilter.$gte = new Date(startDate);
+        paymentDateFilter.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        dateFilter.$lte = end;
+        paymentDateFilter.$lte = end;
+      }
+    }
+    const billDateQuery = Object.keys(dateFilter).length > 0 ? { issueDate: dateFilter } : {};
+    const paymentDateQuery = Object.keys(paymentDateFilter).length > 0 ? { paymentDate: paymentDateFilter } : {};
 
     // Revenue chart: last 6 months of completed payments
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
@@ -78,10 +121,10 @@ router.get('/stats', auth, async (req, res) => {
     ] = await Promise.all([
       Customer.countDocuments(),
       Customer.countDocuments({ status: 'active' }),
-      Bill.countDocuments(),
-      Bill.find({}),
-      Bill.aggregate([{ $match: { issueDate: { $gte: startOfMonth } } }, { $group: { _id: null, total: { $sum: '$totalAmount' } } }]),
-      Payment.aggregate([{ $match: { paymentDate: { $gte: startOfMonth }, status: 'completed' } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
+      Bill.countDocuments(billDateQuery),
+      Bill.find(billDateQuery),
+      Bill.aggregate([{ $match: { issueDate: { $gte: startOfMonth }, ...billDateQuery } }, { $group: { _id: null, total: { $sum: '$totalAmount' } } }]),
+      Payment.aggregate([{ $match: { paymentDate: { $gte: startOfMonth }, status: 'completed', ...paymentDateQuery } }, { $group: { _id: null, total: { $sum: '$amount' } } }]),
       Ticket.countDocuments(),
       Ticket.countDocuments({ status: { $in: ['open', 'in-progress'] } }),
       Ticket.countDocuments({ status: 'open' }),

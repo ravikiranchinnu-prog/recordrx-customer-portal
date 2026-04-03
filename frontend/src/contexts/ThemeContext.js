@@ -7,7 +7,7 @@ export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState('light');
 
   useEffect(() => {
-    const saved = localStorage.getItem('radix_theme') || 'light';
+    const saved = localStorage.getItem('recordrx_theme') || 'light';
     setTheme(saved);
     document.documentElement.classList.toggle('dark', saved === 'dark');
   }, []);
@@ -15,7 +15,7 @@ export function ThemeProvider({ children }) {
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
     setTheme(newTheme);
-    localStorage.setItem('radix_theme', newTheme);
+    localStorage.setItem('recordrx_theme', newTheme);
     document.documentElement.classList.toggle('dark', newTheme === 'dark');
   };
 

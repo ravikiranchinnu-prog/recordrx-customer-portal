@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Radix — Login</title>
+    <title>RECORDRx — Login</title>
 
     <script>
       // Apply dark theme early to avoid flash
       (function () {
         try {
-          const raw = localStorage.getItem('radix_state');
+          const raw = localStorage.getItem('RECORDRx_state');
           const theme = raw ? (JSON.parse(raw)?.ui?.theme || 'light') : 'light';
           if (theme === 'dark') document.documentElement.classList.add('dark');
         } catch {
@@ -35,9 +35,8 @@
         <!-- Brand -->
         <div class="relative mb-6 text-center">
           <div class="relative inline-block">
-            <h1 class="login-logo-title text-3xl font-semibold tracking-tight sm:text-4xl">Radix</h1>
+            <h1 class="login-logo-title text-3xl font-semibold tracking-tight sm:text-4xl">RECORDRx</h1>
           </div>
-          <p class="login-logo-tagline mt-2 text-compact italic text-slate-800 dark:text-slate-200 sm:text-base">The Root of Reliability</p>
         </div>
 
         <div class="card w-full border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
@@ -70,7 +69,7 @@
     </main>
 
     <script>
-      const STORAGE_KEY = 'radix_state';
+      const STORAGE_KEY = 'RECORDRx_state';
 
       function loadState() {
         try {
@@ -124,7 +123,7 @@
         }
 
         // Dynamic authentication — check users/customers created by admin
-        const DATA_KEY = 'radix_data';
+        const DATA_KEY = 'RECORDRx_data';
         const savedData = JSON.parse(localStorage.getItem(DATA_KEY) || '{}');
         
         // Check admin-created employees (users array)

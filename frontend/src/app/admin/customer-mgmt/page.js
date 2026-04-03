@@ -10,7 +10,7 @@ export default function CustomerMgmtPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', plan: '', planType: 'monthly', offer: '', password: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', address: '', plan: '', planType: 'monthly', offer: '', offerMonths: 0, password: '' });
   const { showToast } = useToast();
 
   const loadData = async () => {
@@ -25,7 +25,7 @@ export default function CustomerMgmtPage() {
 
   useEffect(() => { loadData(); }, []);
 
-  const openAdd = () => { setEditingId(null); setForm({ name: '', email: '', phone: '', company: '', plan: '', planType: 'monthly', offer: '', password: '' }); setShowForm(true); };
+  const openAdd = () => { setEditingId(null); setForm({ name: '', email: '', phone: '', company: '', address: '', plan: '', planType: 'monthly', offer: '', offerMonths: 0, password: '' }); setShowForm(true); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,7 +33,7 @@ export default function CustomerMgmtPage() {
       const payload = { ...form };
       if (!editingId && !payload.password) { showToast('Password is required', 'error'); return; }
       if (!payload.plan) delete payload.plan;
-      if (!payload.offer) delete payload.offer;
+      if (!payload.offer) { delete payload.offer; delete payload.offerMonths; }
       if (editingId) {
         delete payload.password; // can't update password from here
         await api.updateMgmtCustomer(editingId, payload);
@@ -69,27 +69,32 @@ export default function CustomerMgmtPage() {
             <div><label className="text-xs font-medium text-slate-600 dark:text-slate-400">Email</label><input type="email" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} required className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200" /></div>
             <div><label className="text-xs font-medium text-slate-600 dark:text-slate-400">Phone</label><input value={form.phone} onChange={(e) => setForm({...form, phone: e.target.value})} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200" /></div>
             <div><label className="text-xs font-medium text-slate-600 dark:text-slate-400">Company</label><input value={form.company} onChange={(e) => setForm({...form, company: e.target.value})} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200" /></div>
+            <div className="md:col-span-2"><label className="text-xs font-medium text-slate-600 dark:text-slate-400">Address</label><input value={form.address} onChange={(e) => setForm({...form, address: e.target.value})} placeholder="Full address" className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200" /></div>
             {!editingId && <div><label className="text-xs font-medium text-slate-600 dark:text-slate-400">Password</label><input type="password" value={form.password} onChange={(e) => setForm({...form, password: e.target.value})} required className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200" /></div>}
             <div>
               <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Plan</label>
-              <select value={form.plan} onChange={(e) => setForm({...form, plan: e.target.value})} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
+              <select value={form.plan} onChange={(e) => {
+                const selectedPlan = plans.find(p => p._id === e.target.value);
+                setForm({...form, plan: e.target.value, planType: selectedPlan?.planType || 'monthly'});
+              }} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
                 <option value="">No Plan</option>
-                {plans.map(p => <option key={p._id} value={p._id}>{p.name} - ₹{p.monthlyPrice}/mo</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Plan Type</label>
-              <select value={form.planType} onChange={(e) => setForm({...form, planType: e.target.value})} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
-                <option value="monthly">Monthly</option><option value="yearly">Yearly</option>
+                {plans.filter(p => p.status === 'active').map(p => <option key={p._id} value={p._id}>{p.name} ({p.planType}) - ₹{p.price}</option>)}
               </select>
             </div>
             <div>
               <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Offer</label>
-              <select value={form.offer} onChange={(e) => setForm({...form, offer: e.target.value})} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
+              <select value={form.offer} onChange={(e) => setForm({...form, offer: e.target.value, offerMonths: e.target.value ? form.offerMonths || 1 : 0})} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800">
                 <option value="">No Offer</option>
-                {offers.map(o => <option key={o._id} value={o._id}>{o.name} ({o.discountPercent}% off)</option>)}
+                {offers.filter(o => o.status === 'active').map(o => <option key={o._id} value={o._id}>{o.name} ({o.discountPercent > 0 ? `${o.discountPercent}% off` : `₹${o.discountAmount} off`})</option>)}
               </select>
             </div>
+            {form.offer && (
+              <div>
+                <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Offer Months</label>
+                <input type="number" min="1" value={form.offerMonths} onChange={(e) => setForm({...form, offerMonths: parseInt(e.target.value) || 1})} className="w-full mt-1 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200" placeholder="e.g., 2" />
+                <p className="text-[11px] text-slate-400 mt-1">Offer applies from next month for this many months</p>
+              </div>
+            )}
             <div className="md:col-span-2 flex gap-3 mt-2">
               <button type="submit" className="px-6 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg">{editingId ? 'Update' : 'Create'}</button>
               <button type="button" onClick={() => setShowForm(false)} className="px-6 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm rounded-lg">Cancel</button>
@@ -118,7 +123,7 @@ export default function CustomerMgmtPage() {
                   <td className="px-4 py-3 text-slate-500">{c.company || '-'}</td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{c.plan?.name || 'None'}</td>
                   <td className="px-4 py-3 flex gap-2">
-                    <button onClick={() => { setEditingId(c._id); setForm({ name: c.name, email: c.email, phone: c.phone || '', company: c.company || '', plan: c.plan?._id || '', planType: c.planType || 'monthly', offer: c.offer?._id || '', password: '' }); setShowForm(true); }} className="text-blue-600 hover:text-blue-700 text-xs font-medium">Edit</button>
+                    <button onClick={() => { setEditingId(c._id); setForm({ name: c.name, email: c.email, phone: c.phone || '', company: c.company || '', address: c.address || '', plan: c.plan?._id || c.plan || '', planType: c.planType || 'monthly', offer: c.offer?._id || c.offer || '', offerMonths: c.offerMonths || 0, password: '' }); setShowForm(true); }} className="text-blue-600 hover:text-blue-700 text-xs font-medium">Edit</button>
                     <button onClick={() => handleDelete(c._id)} className="text-red-600 hover:text-red-700 text-xs font-medium">Delete</button>
                   </td>
                 </tr>

@@ -804,5 +804,5 @@ app.post('/api/email/renewal-reminders', async (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Radix API server running on port ${PORT}`);
+  console.log(`🚀 RECORDRx API server running on port ${PORT}`);
 });

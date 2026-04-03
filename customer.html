@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Radix — Customer Portal</title>
+    <title>RECORDRx — Customer Portal</title>
 
     <script>
       (function () {
         try {
-          const raw = localStorage.getItem('radix_state');
+          const raw = localStorage.getItem('RECORDRx_state');
           const theme = raw ? (JSON.parse(raw)?.ui?.theme || 'light') : 'light';
           if (theme === 'dark') document.documentElement.classList.add('dark');
         } catch {
@@ -611,8 +611,7 @@
             <span class="text-white font-bold text-sm brand-font">R</span>
           </div>
           <div class="logo-text">
-            <h1 class="text-base font-bold brand-font gradient-text">Radix</h1>
-            <p class="text-[9px] text-slate-500 dark:text-slate-400 -mt-0.5 italic">The Root of Reliability</p>
+            <h1 class="text-base font-bold brand-font gradient-text">RECORDRx</h1>
           </div>
         </div>
       </div>
@@ -1025,8 +1024,8 @@
 
     <script>
       // ===== STATE MANAGEMENT =====
-      const STORAGE_KEY = 'radix_state';
-      const CUST_DATA_KEY = 'radix_customer_data';
+      const STORAGE_KEY = 'RECORDRx_state';
+      const CUST_DATA_KEY = 'RECORDRx_customer_data';
 
       function loadState() {
         try {
@@ -1095,10 +1094,10 @@
       }
 
       // ===== DATA MANAGEMENT =====
-      // Customer data reads from admin's shared radix_data store
+      // Customer data reads from admin's shared RECORDRx_data store
       function getAdminData() {
         try {
-          const raw = localStorage.getItem('radix_data');
+          const raw = localStorage.getItem('RECORDRx_data');
           return raw ? JSON.parse(raw) : {};
         } catch { return {}; }
       }
@@ -1200,7 +1199,7 @@
           const oldExpiry = new Date(plan.expiryDate);
           const newStart = oldExpiry > new Date() ? oldExpiry : new Date();
           customer.planStartDate = newStart.toISOString().split('T')[0];
-          localStorage.setItem('radix_data', JSON.stringify(adminData));
+          localStorage.setItem('RECORDRx_data', JSON.stringify(adminData));
         }
 
         showToast(`Plan "${plan.name}" renewal request submitted! Payment will be processed shortly.`, 'success', 4000);
@@ -1435,11 +1434,9 @@
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(22);
         doc.setFont('helvetica', 'bold');
-        doc.text('RADIX', 15, 17);
+        doc.text('RECORDRx', 15, 17);
         doc.setFontSize(8);
         doc.setFont('helvetica', 'italic');
-        doc.text('The Root of Reliability', 15, 23);
-
         doc.setFontSize(18);
         doc.setFont('helvetica', 'bold');
         doc.text('INVOICE', pageW - 15, 17, { align: 'right' });
@@ -1561,10 +1558,10 @@
         doc.setTextColor(148, 163, 184);
         doc.setFont('helvetica', 'normal');
         doc.text('This is a computer-generated invoice. No signature required.', pageW / 2, footerY + 6, { align: 'center' });
-        doc.text('Radix Customer Management Portal | Generated on ' + new Date().toLocaleDateString('en-IN'), pageW / 2, footerY + 11, { align: 'center' });
+        doc.text('RECORDRx Customer Management Portal | Generated on ' + new Date().toLocaleDateString('en-IN'), pageW / 2, footerY + 11, { align: 'center' });
 
         // Save
-        doc.save('Radix_Invoice_' + invoice.id + '.pdf');
+        doc.save('RECORDRx_Invoice_' + invoice.id + '.pdf');
         showToast('Invoice PDF downloaded!', 'success');
       }
 
@@ -1628,7 +1625,7 @@
             status: 'completed'
           });
 
-          localStorage.setItem('radix_data', JSON.stringify(adminData));
+          localStorage.setItem('RECORDRx_data', JSON.stringify(adminData));
         }
 
         closeModal('paymentModal');
@@ -1727,7 +1724,7 @@
         const adminData = getAdminData();
         if (!adminData.tickets) adminData.tickets = [];
         adminData.tickets.push(newTicket);
-        localStorage.setItem('radix_data', JSON.stringify(adminData));
+        localStorage.setItem('RECORDRx_data', JSON.stringify(adminData));
 
         closeModal('newTicketModal');
         showToast('Ticket submitted successfully!', 'success');
@@ -1844,7 +1841,7 @@
         if (ticket) {
           if (!ticket.messages) ticket.messages = [];
           ticket.messages.push(message);
-          localStorage.setItem('radix_data', JSON.stringify(adminData));
+          localStorage.setItem('RECORDRx_data', JSON.stringify(adminData));
         }
         // Also save to customer data
         if (customerData.tickets) {
@@ -2131,7 +2128,7 @@
             return;
           }
           matchedCustomer.password = newPass;
-          localStorage.setItem('radix_data', JSON.stringify(adminData));
+          localStorage.setItem('RECORDRx_data', JSON.stringify(adminData));
         }
 
         // Also check hardcoded credentials
@@ -2281,7 +2278,7 @@
 
             <!-- Footer -->
             <div class="support-popup-footer">
-              <p>Radix Support</p>
+              <p>RECORDRx Support</p>
             </div>
           </div>
         `;
@@ -2465,7 +2462,7 @@
           const adminData = getAdminData();
           if (!adminData.tickets) adminData.tickets = [];
           adminData.tickets.push(newTicket);
-          localStorage.setItem('radix_data', JSON.stringify(adminData));
+          localStorage.setItem('RECORDRx_data', JSON.stringify(adminData));
 
           // Show success view
           popupTitle.textContent = 'Ticket Submitted!';

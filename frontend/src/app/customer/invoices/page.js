@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { useToast } from '@/components/Toast';
+import DateRangePicker from '@/components/DateRangePicker';
 
 export default function CustomerInvoices() {
   const [bills, setBills] = useState([]);
@@ -13,15 +14,22 @@ export default function CustomerInvoices() {
   const [payForm, setPayForm] = useState({ amount: 0, paymentMethod: 'upi', transactionId: '', referenceNumber: '', notes: '' });
   const [paying, setPaying] = useState(false);
   const [payMode, setPayMode] = useState('online'); // 'online' (Razorpay) or 'manual'
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const loadBills = () => {
-    api.getBills()
+    const params = new URLSearchParams();
+    if (dateFrom) params.set('startDate', dateFrom);
+    if (dateTo) params.set('endDate', dateTo);
+    const queryStr = params.toString();
+    api.getBills(queryStr)
       .then(data => setBills(data.bills || []))
       .catch(err => showToast(err.message, 'error'))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadBills(); }, []);
+  useEffect(() => { loadBills(); }, [dateFrom, dateTo]);
 
   const downloadInvoice = async (id) => {
     try {
@@ -58,7 +66,7 @@ export default function CustomerInvoices() {
         key,
         amount: order.amount,
         currency: order.currency,
-        name: 'Radix',
+        name: 'RECORDRx',
         description: `Invoice: ${order.invoiceNumber}`,
         order_id: order.orderId,
         prefill: {
@@ -127,8 +135,6 @@ export default function CustomerInvoices() {
     const colors = { draft: 'bg-slate-100 text-slate-600', pending: 'bg-amber-100 text-amber-700', partial: 'bg-blue-100 text-blue-700', paid: 'bg-green-100 text-green-700', overdue: 'bg-red-100 text-red-700', cancelled: 'bg-slate-200 text-slate-500' };
     return <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${colors[status] || ''}`}>{status?.toUpperCase()}</span>;
   };
-
-  const [statusFilter, setStatusFilter] = useState('all');
 
   // Transaction details modal state
   const [viewBill, setViewBill] = useState(null);
@@ -200,11 +206,14 @@ export default function CustomerInvoices() {
         </div>
       </div>
 
-      {/* Status Filter */}
-      <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-        className="px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200">
-        <option value="all">All Status</option><option value="pending">Pending</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="overdue">Overdue</option>
-      </select>
+      {/* Status & Date Filter */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+          className="px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+          <option value="all">All Status</option><option value="pending">Pending</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="overdue">Overdue</option>
+        </select>
+        <DateRangePicker dateFrom={dateFrom} dateTo={dateTo} onChange={(from, to) => { setDateFrom(from); setDateTo(to); }} />
+      </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
         <div className="overflow-x-auto"><table className="w-full text-sm">
@@ -212,19 +221,23 @@ export default function CustomerInvoices() {
             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Invoice #</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Bill #</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Amount</th>
+            <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">GST</th>
+            <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Total</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Paid</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Due Date</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Actions</th>
           </tr></thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {filteredBills.length === 0 ? <tr><td colSpan="7" className="text-center py-8 text-slate-400">No invoices found</td></tr> :
+            {filteredBills.length === 0 ? <tr><td colSpan="9" className="text-center py-8 text-slate-400">No invoices found</td></tr> :
               filteredBills.map(bill => {
                 const balance = (bill.totalAmount || 0) - (bill.paidAmount || 0);
                 return (
                   <tr key={bill._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                     <td className="px-4 py-3 font-medium text-teal-600">{bill.invoiceNumber}</td>
                     <td className="px-4 py-3 text-slate-500">{bill.billNumber}</td>
+                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300">₹{(bill.subtotal || 0).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-slate-500">₹{(bill.taxAmount || 0).toLocaleString()}</td>
                     <td className="px-4 py-3 font-semibold text-slate-800 dark:text-white">₹{bill.totalAmount?.toLocaleString()}</td>
                     <td className="px-4 py-3 text-green-600">₹{(bill.paidAmount || 0).toLocaleString()}</td>
                     <td className="px-4 py-3 text-slate-500">{bill.dueDate ? new Date(bill.dueDate).toLocaleDateString() : '-'}</td>

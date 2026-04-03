@@ -13,7 +13,7 @@ const createTransporter = () => {
 };
 
 const getFromAddress = () => {
-  return `${process.env.EMAIL_FROM_NAME || 'Radix Billing'} <${process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER}>`;
+  return `${process.env.EMAIL_FROM_NAME || 'RECORDRx'} <${process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER}>`;
 };
 
 /**
@@ -49,8 +49,8 @@ const sendInvoiceEmail = async (bill) => {
         
         <!-- Header -->
         <div style="background:linear-gradient(135deg,#0d9488,#14b8a6);padding:30px;text-align:center;">
-          <h1 style="color:#fff;margin:0;font-size:28px;letter-spacing:1px;">RADIX</h1>
-          <p style="color:#ccfbf1;margin:5px 0 0;font-size:12px;">The Root of Reliability</p>
+          <h1 style="color:#fff;margin:0;font-size:28px;letter-spacing:1px;">RECORDRx</h1>
+          <p style="color:#ccfbf1;margin:5px 0 0;font-size:12px;">FUTURE OF PATIENT CARE - POWERED BY AI</p>
         </div>
 
         <!-- Invoice Badge -->
@@ -122,8 +122,8 @@ const sendInvoiceEmail = async (bill) => {
 
         <!-- Footer -->
         <div style="background:#f8fafc;padding:20px 30px;text-align:center;border-top:1px solid #e2e8f0;">
-          <p style="margin:0;color:#94a3b8;font-size:11px;">This is an auto-generated email from Radix Billing System.</p>
-          <p style="margin:5px 0 0;color:#94a3b8;font-size:11px;">© ${new Date().getFullYear()} Radix. All rights reserved.</p>
+          <p style="margin:0;color:#94a3b8;font-size:11px;">This is an auto-generated email from RECORDRx Billing System.</p>
+          <p style="margin:5px 0 0;color:#94a3b8;font-size:11px;">© ${new Date().getFullYear()} RECORDRx. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -166,8 +166,8 @@ const sendPaymentConfirmationEmail = async (payment, bill) => {
       <div style="max-width:600px;margin:30px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.07);">
         
         <div style="background:linear-gradient(135deg,#059669,#10b981);padding:30px;text-align:center;">
-          <h1 style="color:#fff;margin:0;font-size:28px;letter-spacing:1px;">RADIX</h1>
-          <p style="color:#d1fae5;margin:5px 0 0;font-size:12px;">The Root of Reliability</p>
+          <h1 style="color:#fff;margin:0;font-size:28px;letter-spacing:1px;">RECORDRx</h1>
+          <p style="color:#d1fae5;margin:5px 0 0;font-size:12px;">FUTURE OF PATIENT CARE - POWERED BY AI</p>
         </div>
 
         <div style="text-align:center;padding:20px 0 0;">
@@ -198,8 +198,8 @@ const sendPaymentConfirmationEmail = async (payment, bill) => {
         </div>
 
         <div style="background:#f8fafc;padding:20px 30px;text-align:center;border-top:1px solid #e2e8f0;">
-          <p style="margin:0;color:#94a3b8;font-size:11px;">This is an auto-generated email from Radix Billing System.</p>
-          <p style="margin:5px 0 0;color:#94a3b8;font-size:11px;">© ${new Date().getFullYear()} Radix. All rights reserved.</p>
+          <p style="margin:0;color:#94a3b8;font-size:11px;">This is an auto-generated email from RECORDRx Billing System.</p>
+          <p style="margin:5px 0 0;color:#94a3b8;font-size:11px;">© ${new Date().getFullYear()} RECORDRx. All rights reserved.</p>
         </div>
       </div>
     </body>
@@ -220,4 +220,115 @@ const sendPaymentConfirmationEmail = async (payment, bill) => {
   }
 };
 
-module.exports = { createTransporter, getFromAddress, sendInvoiceEmail, sendPaymentConfirmationEmail };
+/**
+ * Send welcome email to customer and admin when a new customer is created
+ */
+const sendWelcomeEmail = async ({ customerName, customerEmail, customerId, planName, planType, planPrice, planGst, offerName, offerDiscount, address, phone, company }) => {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    console.log('[Email] Skipped: EMAIL_USER / EMAIL_PASSWORD not configured');
+    return { sent: false, reason: 'not_configured' };
+  }
+
+  try {
+    const transporter = createTransporter();
+    const totalWithGst = planPrice ? (planPrice + (planPrice * (planGst || 18)) / 100) : 0;
+
+    const planDetailsHtml = planName ? `
+      <div style="background:#f0fdfa;border-radius:8px;padding:20px;margin:20px 0;">
+        <h3 style="color:#0d9488;margin:0 0 12px;font-size:15px;font-weight:600;">Plan Details</h3>
+        <table style="width:100%;font-size:13px;">
+          <tr><td style="padding:5px 0;color:#64748b;">Plan</td><td style="text-align:right;color:#334155;font-weight:600;">${planName}</td></tr>
+          <tr><td style="padding:5px 0;color:#64748b;">Type</td><td style="text-align:right;color:#334155;font-weight:600;">${planType === 'yearly' ? 'Yearly' : 'Monthly'}</td></tr>
+          <tr><td style="padding:5px 0;color:#64748b;">Price</td><td style="text-align:right;color:#334155;font-weight:600;">₹${planPrice?.toFixed(2)}</td></tr>
+          <tr><td style="padding:5px 0;color:#64748b;">GST (${planGst || 18}%)</td><td style="text-align:right;color:#334155;font-weight:600;">₹${((planPrice * (planGst || 18)) / 100).toFixed(2)}</td></tr>
+          <tr style="border-top:1px solid #ccfbf1;"><td style="padding:8px 0 0;color:#0d9488;font-weight:700;">Total</td><td style="text-align:right;padding:8px 0 0;color:#0d9488;font-weight:700;font-size:16px;">₹${totalWithGst.toFixed(2)}</td></tr>
+        </table>
+      </div>` : '<p style="color:#64748b;font-size:13px;">No plan assigned yet.</p>';
+
+    const offerHtml = offerName ? `
+      <div style="background:#fffbeb;border-left:3px solid #f59e0b;padding:12px 15px;border-radius:4px;margin:10px 0;">
+        <p style="margin:0;color:#92400e;font-size:13px;font-weight:600;">🎁 Offer Applied: ${offerName}</p>
+        <p style="margin:4px 0 0;color:#a16207;font-size:12px;">Discount: ${offerDiscount}</p>
+      </div>` : '';
+
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"></head>
+    <body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f1f5f9;">
+      <div style="max-width:600px;margin:30px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.07);">
+        
+        <div style="background:linear-gradient(135deg,#0d9488,#14b8a6);padding:30px;text-align:center;">
+          <h1 style="color:#fff;margin:0;font-size:28px;letter-spacing:1px;">RECORDRx</h1>
+          <p style="color:#ccfbf1;margin:5px 0 0;font-size:12px;">FUTURE OF PATIENT CARE - POWERED BY AI</p>
+        </div>
+
+        <div style="text-align:center;padding:20px 0 0;">
+          <span style="background:#f0fdfa;color:#0d9488;padding:6px 18px;border-radius:20px;font-size:13px;font-weight:600;">🎉 WELCOME ABOARD!</span>
+        </div>
+
+        <div style="padding:25px 30px;">
+          <p style="color:#334155;font-size:15px;">Dear <strong>${customerName}</strong>,</p>
+          <p style="color:#64748b;font-size:14px;line-height:1.6;">
+            Welcome to RECORDRx! Your account has been successfully created. Here are your account details:
+          </p>
+
+          <div style="background:#f8fafc;border-radius:8px;padding:15px 20px;margin:15px 0;">
+            <table style="width:100%;font-size:13px;">
+              <tr><td style="padding:5px 0;color:#64748b;">Customer ID</td><td style="text-align:right;color:#0d9488;font-weight:700;">${customerId}</td></tr>
+              <tr><td style="padding:5px 0;color:#64748b;">Email</td><td style="text-align:right;color:#334155;font-weight:600;">${customerEmail}</td></tr>
+              ${phone ? `<tr><td style="padding:5px 0;color:#64748b;">Phone</td><td style="text-align:right;color:#334155;font-weight:600;">${phone}</td></tr>` : ''}
+              ${company ? `<tr><td style="padding:5px 0;color:#64748b;">Company</td><td style="text-align:right;color:#334155;font-weight:600;">${company}</td></tr>` : ''}
+              ${address ? `<tr><td style="padding:5px 0;color:#64748b;">Address</td><td style="text-align:right;color:#334155;font-weight:600;">${address}</td></tr>` : ''}
+            </table>
+          </div>
+
+          ${planDetailsHtml}
+          ${offerHtml}
+
+          <p style="color:#64748b;font-size:13px;margin-top:25px;line-height:1.6;">
+            You can now log in to the customer portal to view your invoices, manage payments, and raise support tickets.
+            If you need any assistance, please don't hesitate to reach out.
+          </p>
+        </div>
+
+        <div style="background:#f8fafc;padding:20px 30px;text-align:center;border-top:1px solid #e2e8f0;">
+          <p style="margin:0;color:#94a3b8;font-size:11px;">This is an auto-generated email from RECORDRx Billing System.</p>
+          <p style="margin:5px 0 0;color:#94a3b8;font-size:11px;">© ${new Date().getFullYear()} RECORDRx. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>`;
+
+    const subject = `Welcome to RECORDRx — ${planName ? `Your ${planName} Plan is Active` : 'Your Account is Ready'}`;
+
+    // Send to customer
+    await transporter.sendMail({
+      from: getFromAddress(),
+      to: customerEmail,
+      subject,
+      html
+    });
+    console.log(`[Email] Welcome email sent to customer: ${customerEmail}`);
+
+    // Send to admin
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (adminEmail) {
+      const adminHtml = html.replace('Welcome to RECORDRx!', `New customer <strong>${customerName}</strong> (${customerId}) has been added.`).replace('You can now log in', 'The customer can now log in');
+      await transporter.sendMail({
+        from: getFromAddress(),
+        to: adminEmail,
+        subject: `New Customer Added — ${customerName} (${customerId})${planName ? ` | ${planName} Plan` : ''}`,
+        html: adminHtml
+      });
+      console.log(`[Email] Welcome notification sent to admin: ${adminEmail}`);
+    }
+
+    return { sent: true };
+  } catch (error) {
+    console.error(`[Email] Failed to send welcome email: ${error.message}`);
+    return { sent: false, reason: error.message };
+  }
+};
+
+module.exports = { createTransporter, getFromAddress, sendInvoiceEmail, sendPaymentConfirmationEmail, sendWelcomeEmail };

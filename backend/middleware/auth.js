@@ -7,7 +7,7 @@ const auth = async (req, res, next) => {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) return res.status(401).json({ error: 'No token provided' });
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'radix-secret-key');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'recordrx-secret-key');
     const user = await User.findById(decoded.id);
     if (!user) return res.status(401).json({ error: 'User not found' });
     if (user.status !== 'active') return res.status(403).json({ error: 'Account is disabled' });

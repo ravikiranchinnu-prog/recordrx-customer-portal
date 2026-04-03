@@ -37,7 +37,7 @@ export async function POST(req) {
 
     const transporter = createTransporter();
     await transporter.sendMail({
-      from: `${process.env.EMAIL_FROM_NAME || 'Radix Billing'} <${process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER}>`,
+      from: `${process.env.EMAIL_FROM_NAME || 'RECORDRx'} <${process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER}>`,
       to: Array.isArray(to) ? to.join(',') : to,
       subject: tpl(draft.subject, templateData),
       html: tpl(draft.html || '', templateData)

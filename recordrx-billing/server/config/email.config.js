@@ -1,5 +1,5 @@
 /**
- * Email Configuration for Radix Billing System
+ * Email Configuration for RecordRx Billing System
  * 
  * ⚠️ SETUP YOUR GMAIL CREDENTIALS BELOW
  * 
@@ -7,7 +7,7 @@
  * 1. Go to https://myaccount.google.com/security
  * 2. Enable 2-Step Verification
  * 3. Go to https://myaccount.google.com/apppasswords
- * 4. Generate an App Password (select "Mail" → "Other" → name it "Radix")
+ * 4. Generate an App Password (select "Mail" → "Other" → name it "RecordRx")
  * 5. Copy the 16-character password and paste below as EMAIL_PASSWORD
  */
 
@@ -26,12 +26,12 @@ module.exports = {
     
     // ==================== SENDER DETAILS (shown to customers) ====================
     // ⬇️ Your company name and email that customers will see
-    EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME || 'Radix Billing',
+    EMAIL_FROM_NAME: process.env.EMAIL_FROM_NAME || 'RECORDRx',
     EMAIL_FROM_ADDRESS: process.env.EMAIL_FROM_ADDRESS || 'your-gmail@gmail.com',
     
     // ==================== COMPANY BRANDING ====================
-    COMPANY_NAME: 'Radix',
-    COMPANY_TAGLINE: 'The Root of Reliability',
+    COMPANY_NAME: 'RECORDRx',
+    COMPANY_TAGLINE: '',
     COMPANY_LOGO_URL: '',
     
     // ==================== AUTO-EMAIL TRIGGERS ====================
@@ -66,9 +66,9 @@ module.exports = {
  *   EMAIL_SECURE=false
  *   EMAIL_USER=your-email@gmail.com
  *   EMAIL_PASSWORD=your-app-password
- *   EMAIL_FROM_NAME=Radix Billing
- *   EMAIL_FROM_ADDRESS=billing@radix.com
- *   ADMIN_EMAIL=admin@radix.com
+ *   EMAIL_FROM_NAME=RecordRx
+ *   EMAIL_FROM_ADDRESS=billing@recordrx.com
+ *   ADMIN_EMAIL=admin@recordrx.com
  * 
  * FOR GMAIL:
  * 1. Go to Google Account > Security

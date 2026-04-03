@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Radix — Admin Portal</title>
+    <title>RECORDRx — Admin Portal</title>
 
     <script>
       (function () {
         try {
-          const raw = localStorage.getItem('radix_state');
+          const raw = localStorage.getItem('RECORDRx_state');
           const theme = raw ? (JSON.parse(raw)?.ui?.theme || 'light') : 'light';
           if (theme === 'dark') document.documentElement.classList.add('dark');
         } catch {
@@ -482,8 +482,7 @@
             <span class="text-white font-bold text-sm brand-font">R</span>
           </div>
           <div class="logo-text">
-            <h1 class="text-base font-bold brand-font gradient-text">Radix</h1>
-            <p class="text-[9px] text-slate-500 dark:text-slate-400 -mt-0.5 italic">The Root of Reliability</p>
+            <h1 class="text-base font-bold brand-font gradient-text">RECORDRx</h1>
           </div>
         </div>
       </div>
@@ -1714,7 +1713,7 @@
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
-            <input type="email" id="newUserEmail" placeholder="email@radix.com" class="w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+            <input type="email" id="newUserEmail" placeholder="email@RECORDRx.com" class="w-full px-2 py-1.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200">
           </div>
           <div>
             <label class="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Role</label>
@@ -2088,7 +2087,7 @@
     </div>
 
     <script>
-      const STORAGE_KEY = 'radix_state';
+      const STORAGE_KEY = 'RECORDRx_state';
 
       function loadState() {
         try {
@@ -2369,7 +2368,7 @@
       // ===== BILLING SYSTEM =====
       
       // ===== DATA PERSISTENCE (localStorage) =====
-      const DATA_KEY = 'radix_data';
+      const DATA_KEY = 'RECORDRx_data';
 
       function loadAppData() {
         try {
@@ -2786,7 +2785,7 @@
             <!-- Footer -->
             <div class="text-center text-[10px] text-slate-400 border-t border-slate-100 pt-4">
               <p>Thank you for your business!</p>
-              <p>For questions about this invoice, please contact billing@recordrx.com</p>
+              <p>For questions about this invoice, please contact billing@RECORDRx.com</p>
             </div>
           </div>
         `;
@@ -2831,7 +2830,7 @@ Balance Due:      ₹${balance.toLocaleString('en-IN')}
 
 ====================================
 Thank you for your business!
-For questions: billing@recordrx.com
+For questions: billing@RECORDRx.com
         `.trim();
         
         // Create and download file
@@ -3431,7 +3430,7 @@ For questions: billing@recordrx.com
         .catch(() => {
           // Server not running - just show notification
           showToast(`Welcome email queued for ${email}`, 'info');
-          console.log(`[EMAIL QUEUED] To: ${email}, Subject: Welcome to Radix - Your ${type} Account`);
+          console.log(`[EMAIL QUEUED] To: ${email}, Subject: Welcome to RECORDRx - Your ${type} Account`);
         });
       }
 
@@ -4311,7 +4310,7 @@ For questions: billing@recordrx.com
         const attachment = pendingAttachments[ticketId] || null;
         if (!text && !attachment) return;
 
-        const authState = JSON.parse(localStorage.getItem('radix_state') || '{}');
+        const authState = JSON.parse(localStorage.getItem('RECORDRx_state') || '{}');
         const message = {
           id: 'MSG' + Date.now(),
           sender: 'admin',

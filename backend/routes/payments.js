@@ -16,7 +16,11 @@ router.get('/', auth, async (req, res) => {
     if (startDate || endDate) {
       query.paymentDate = {};
       if (startDate) query.paymentDate.$gte = new Date(startDate);
-      if (endDate) query.paymentDate.$lte = new Date(endDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.paymentDate.$lte = end;
+      }
     }
     const payments = await Payment.find(query)
       .populate('billId', 'billNumber invoiceNumber totalAmount')

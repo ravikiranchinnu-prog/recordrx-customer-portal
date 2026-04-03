@@ -34,10 +34,10 @@ router.post('/send-test', auth, adminOnly, async (req, res) => {
     if (!to) return res.status(400).json({ error: 'Recipient email required' });
     const transporter = createTransporter();
     await transporter.sendMail({
-      from: `${process.env.EMAIL_FROM_NAME || 'Radix'} <${process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER}>`,
+      from: `${process.env.EMAIL_FROM_NAME || 'RECORDRx'} <${process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER}>`,
       to,
-      subject: 'Test Email from Radix',
-      html: '<h1>Test Email</h1><p>This is a test email from Radix Billing System.</p>'
+      subject: 'Test Email from RECORDRx',
+      html: '<h1>Test Email</h1><p>This is a test email from RECORDRx Billing System.</p>'
     });
     res.json({ success: true });
   } catch (error) {
@@ -52,9 +52,9 @@ router.post('/send-invoice', auth, adminOnly, async (req, res) => {
     if (!to || !invoiceData) return res.status(400).json({ error: 'Recipient and invoice data required' });
     const transporter = createTransporter();
     await transporter.sendMail({
-      from: `${process.env.EMAIL_FROM_NAME || 'Radix'} <${process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER}>`,
+      from: `${process.env.EMAIL_FROM_NAME || 'RECORDRx'} <${process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER}>`,
       to,
-      subject: `Invoice ${invoiceData.invoiceNumber} from Radix`,
+      subject: `Invoice ${invoiceData.invoiceNumber} from RECORDRx`,
       html: `<h2>Invoice ${invoiceData.invoiceNumber}</h2><p>Dear ${invoiceData.customerName},</p><p>Amount Due: ₹${invoiceData.amount}</p><p>Due Date: ${invoiceData.dueDate}</p>`
     });
     res.json({ success: true });
@@ -68,7 +68,7 @@ router.get('/config', auth, adminOnly, (req, res) => {
   res.json({
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
     port: process.env.EMAIL_PORT || 587,
-    fromName: process.env.EMAIL_FROM_NAME || 'Radix Billing',
+    fromName: process.env.EMAIL_FROM_NAME || 'RECORDRx',
     fromAddress: process.env.EMAIL_FROM_ADDRESS || ''
   });
 });
@@ -82,7 +82,13 @@ router.get('/drafts', (req, res) => {
     if (!fs.existsSync(file)) return res.json([]);
     const raw = fs.readFileSync(file, 'utf8');
     const drafts = JSON.parse(raw || '[]');
-    res.json(drafts.map(d => ({ id: d.id, subject: d.subject })));
+    res.json(drafts.map(d => ({ 
+      id: d.id, 
+      subject: d.subject,
+      html: d.html || '',
+      issueType: d.issueType || '',
+      customerQuestions: d.customerQuestions || ''
+    })));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -103,12 +109,31 @@ router.post('/send-draft', auth, adminOnly, async (req, res) => {
 
     const transporter = createTransporter();
     await transporter.sendMail({
-      from: `${process.env.EMAIL_FROM_NAME || 'Radix'} <${process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER}>`,
+      from: `${process.env.EMAIL_FROM_NAME || 'RECORDRx'} <${process.env.EMAIL_FROM_ADDRESS || process.env.EMAIL_USER}>`,
       to: Array.isArray(to) ? to.join(',') : to,
       subject: tpl(draft.subject),
       html: tpl(draft.html || '')
     });
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/email/send-monthly-report — manually trigger monthly report
+router.post('/send-monthly-report', auth, adminOnly, async (req, res) => {
+  try {
+    const { generateAndSendMonthlyReport } = require('../utils/reportHelper');
+    // Default to previous month, or accept year/month in body
+    const now = new Date();
+    const year = req.body.year || (now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear());
+    const month = req.body.month !== undefined ? req.body.month : (now.getMonth() === 0 ? 11 : now.getMonth() - 1);
+    const result = await generateAndSendMonthlyReport(year, month);
+    if (result.sent) {
+      res.json({ success: true, message: `Report sent to ${result.recipients.join(', ')}`, month: result.month });
+    } else {
+      res.status(400).json({ success: false, error: result.reason });
+    }
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

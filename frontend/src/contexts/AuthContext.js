@@ -11,11 +11,11 @@ export function AuthProvider({ children }) {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('radix_token');
+    const token = localStorage.getItem('recordrx_token');
     if (token) {
       api.getMe()
         .then(data => setUser(data.user))
-        .catch(() => { localStorage.removeItem('radix_token'); })
+        .catch(() => { localStorage.removeItem('recordrx_token'); })
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
@@ -24,7 +24,7 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const data = await api.login(email, password);
-    localStorage.setItem('radix_token', data.token);
+    localStorage.setItem('recordrx_token', data.token);
     setUser(data.user);
     if (data.user.role === 'customer') {
       router.push('/customer/dashboard');
@@ -35,7 +35,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('radix_token');
+    localStorage.removeItem('recordrx_token');
     setUser(null);
     router.push('/login');
   };

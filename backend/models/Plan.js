@@ -2,10 +2,10 @@ const mongoose = require('mongoose');
 
 const PlanSchema = new mongoose.Schema({
   name: { type: String, required: true },
+  planType: { type: String, enum: ['monthly', 'yearly'], default: 'monthly' },
+  price: { type: Number, default: 0 },
+  gst: { type: Number, default: 0 },
   description: { type: String, default: '' },
-  monthlyPrice: { type: Number, default: 0 },
-  yearlyPrice: { type: Number, default: 0 },
-  features: [{ type: String }],
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }

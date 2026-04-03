@@ -1,5 +1,5 @@
 /**
- * Email Service for Radix Billing System
+ * Email Service for RecordRx Billing System
  * Handles all email sending functionality
  */
 

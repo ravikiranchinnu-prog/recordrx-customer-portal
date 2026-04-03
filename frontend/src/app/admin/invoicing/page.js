@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
 import { useToast } from '@/components/Toast';
+import DateRangePicker from '@/components/DateRangePicker';
 
 export default function InvoicingPage() {
   const [bills, setBills] = useState([]);
@@ -11,10 +12,18 @@ export default function InvoicingPage() {
   const [showGenerate, setShowGenerate] = useState(false);
   const [form, setForm] = useState({ customerId: '', description: '', quantity: 1, unitPrice: 0, taxRate: 18, billingPeriodStart: '', billingPeriodEnd: '', dueDate: '', notes: '' });
   const { showToast } = useToast();
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const loadData = async () => {
     try {
-      const [billsData, custData] = await Promise.all([api.getBills(), api.getCustomers()]);
+      const params = new URLSearchParams();
+      if (dateFrom) params.set('startDate', dateFrom);
+      if (dateTo) params.set('endDate', dateTo);
+      const queryStr = params.toString();
+      const [billsData, custData] = await Promise.all([api.getBills(queryStr), api.getCustomers()]);
       setBills(billsData.bills || []);
       setSummary(billsData.summary || {});
       setCustomers(custData.customers || []);
@@ -22,7 +31,7 @@ export default function InvoicingPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [dateFrom, dateTo]);
 
   const generateBill = async (e) => {
     e.preventDefault();
@@ -51,9 +60,6 @@ export default function InvoicingPage() {
       URL.revokeObjectURL(url);
     } catch (err) { showToast(err.message, 'error'); }
   };
-
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
 
   // Transaction details modal state
   const [viewBill, setViewBill] = useState(null);
@@ -138,13 +144,14 @@ export default function InvoicingPage() {
       </div>
 
       {/* Filter / Search Bar */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
           className="px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200">
           <option value="all">All Status</option><option value="pending">Pending</option><option value="partial">Partial</option><option value="paid">Paid</option><option value="overdue">Overdue</option>
         </select>
         <input type="text" placeholder="Search invoices..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-          className="flex-1 px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200" />
+          className="w-48 px-2 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200" />
+        <DateRangePicker dateFrom={dateFrom} dateTo={dateTo} onChange={(from, to) => { setDateFrom(from); setDateTo(to); }} />
       </div>
 
       {/* Generate Bill Form */}
@@ -212,6 +219,8 @@ export default function InvoicingPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Invoice #</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Customer</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Amount</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">GST</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Total</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Due Date</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Actions</th>
@@ -219,11 +228,13 @@ export default function InvoicingPage() {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredBills.length === 0 ? (
-                <tr><td colSpan="6" className="text-center py-8 text-slate-400">No bills found</td></tr>
+                <tr><td colSpan="8" className="text-center py-8 text-slate-400">No bills found</td></tr>
               ) : filteredBills.map(bill => (
                 <tr key={bill._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="px-4 py-3 font-medium text-teal-600">{bill.invoiceNumber}</td>
                   <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{bill.customerName}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">₹{(bill.subtotal || 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-slate-500">₹{(bill.taxAmount || 0).toLocaleString()}</td>
                   <td className="px-4 py-3 font-semibold text-slate-800 dark:text-white">₹{bill.totalAmount?.toLocaleString()}</td>
                   <td className="px-4 py-3 text-slate-500">{bill.dueDate ? new Date(bill.dueDate).toLocaleDateString() : '-'}</td>
                   <td className="px-4 py-3">

@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTheme } from '@/contexts/ThemeContext';
 
 /* ── Admin: top nav (main pages) ── */
 const adminMainNav = [
@@ -12,6 +13,8 @@ const adminMainNav = [
 
 /* ── Admin: bottom nav (management/settings — below a border) ── */
 const adminBottomNav = [
+  { href: '/admin/plans', label: 'Plans', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { href: '/admin/offers', label: 'Offers', icon: 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z' },
   { href: '/admin/customer-mgmt', label: 'Customer Mgmt', icon: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z' },
   { href: '/admin/user-mgmt', label: 'User Mgmt', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
   { href: '/admin/settings', label: 'Settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
@@ -46,7 +49,8 @@ function NavItem({ item, pathname }) {
 
 export default function Sidebar({ variant = 'admin' }) {
   const pathname = usePathname();
-  const mainNav = variant === 'admin' ? adminMainNav : customerMainNav;
+   const { theme } = useTheme();
+   const mainNav = variant === 'admin' ? adminMainNav : customerMainNav;
   const bottomNav = variant === 'admin' ? adminBottomNav : customerBottomNav;
 
   return (
@@ -54,13 +58,7 @@ export default function Sidebar({ variant = 'admin' }) {
       {/* Logo */}
       <div className="h-12 flex items-center px-3 border-b border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-2 overflow-hidden">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center flex-shrink-0 glow">
-            <span className="text-white font-bold text-sm brand-font">R</span>
-          </div>
-          <div className="logo-text">
-            <h1 className="text-base font-bold brand-font gradient-text">Radix</h1>
-            <p className="text-[9px] text-slate-500 dark:text-slate-400 -mt-0.5 italic">The Root of Reliability</p>
-          </div>
+          <img src={theme === 'light' ? '/light-mode-logo.png' : '/dark-mode-logo.png'} alt="Logo" className="h-7 w-auto" />
         </div>
       </div>
 
