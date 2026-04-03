@@ -13,7 +13,15 @@ connectDB();
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    // Allow any vercel.app domain or localhost
+    if (origin.match(/\.vercel\.app$/) || origin.match(/localhost/)) {
+      return callback(null, true);
+    }
+    callback(null, true);
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -49,8 +57,10 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 RECORDRx API server running on port ${PORT}`);
+  console.log(`RECORDRx API server running on port ${PORT}`);
 });
+
+module.exports = app;
 
 // ── Cron: Auto-generate prepaid bills on the 1st of every month at 00:05 ──
 cron.schedule('5 0 1 * *', async () => {
