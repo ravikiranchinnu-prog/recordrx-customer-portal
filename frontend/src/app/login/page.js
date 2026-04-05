@@ -159,7 +159,6 @@ export default function LoginPage() {
             <div className="relative inline-block">
               <img src={theme === 'light' ? '/light-mode-logo.png' : '/dark-mode-logo.png'} alt="Logo" className="h-12 w-auto mx-auto" />
             </div>
-            <p className="login-logo-tagline mt-2 text-compact italic text-slate-800 dark:text-slate-200 sm:text-base">Powered by RECORDRx</p>
           </div>
 
           <div className="card w-full border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950" style={{ borderRadius: '10px' }}>
